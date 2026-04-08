@@ -35,7 +35,7 @@
 <table align="center">
   <tr>
     <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat1.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="조장: 김가영" />
+      <img src="./이미지/깃허브_사진/가영.png" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="조장: 김가영" />
       <br />
       <b>조장: 김가영</b>
       <br />
@@ -45,7 +45,7 @@
     </td>
 
   <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat2.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="김다솜" />
+      <img src="./이미지/깃허브_사진/다솜.png" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="김다솜" />
       <br />
       <b>김다솜</b>
       <br />
@@ -55,7 +55,7 @@
     </td>
 
   <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat3.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="김승욱" />
+      <img src="./이미지/깃허브_사진/승욱.png" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="김승욱" />
       <br />
       <b>김승욱</b>
       <br />
@@ -65,17 +65,7 @@
     </td>
 
   <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat4.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="김정수" />
-      <br />
-      <b>김정수</b>
-      <br />
-      <a href="https://github.com/krystallinekim">
-        <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
-      </a>
-    </td>
-
-  <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat5.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="신민수" />
+      <img src="./이미지/깃허브_사진/민수.png" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="신민수" />
       <br />
       <b>신민수</b>
       <br />
@@ -85,7 +75,7 @@
     </td>
 
   <td align="center" width="180">
-      <img src="./이미지/깃허브_사진/cat6.jpg" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="이서윤" />
+      <img src="./이미지/깃허브_사진/서윤.png" width="160" height="160" style="object-fit:cover; border-radius:14px; display:block; margin:0 auto;" alt="이서윤" />
       <br />
       <b>이서윤</b>
       <br />
