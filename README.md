@@ -20,11 +20,11 @@
 
 <br/><br/>
 
-<img src="https://img.shields.io/badge/Frontend-React-0f172a?style=for-the-badge&logo=react" alt="React" />
-<img src="https://img.shields.io/badge/Language-TypeScript-0f172a?style=for-the-badge&logo=typescript" alt="TypeScript" />
-<img src="https://img.shields.io/badge/Styling-TailwindCSS-0f172a?style=for-the-badge&logo=tailwindcss" alt="TailwindCSS" />
-<img src="https://img.shields.io/badge/State-TanStack%20Query-0f172a?style=for-the-badge" alt="TanStack Query" />
-<img src="https://img.shields.io/badge/Design-Figma-0f172a?style=for-the-badge&logo=figma" alt="Figma" />
+<img src="https://img.shields.io/badge/Frontend-Vue.js-42b883?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue.js" />
+<img src="https://img.shields.io/badge/Language-TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+<img src="https://img.shields.io/badge/Styling-TailwindCSS-06b6d4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="TailwindCSS" />
+<img src="https://img.shields.io/badge/State-Pinia-ffe162?style=for-the-badge&logo=pinia&logoColor=black" alt="Pinia" />
+<img src="https://img.shields.io/badge/Data_Fetching-TanStack_Query-ff4154?style=for-the-badge&logo=react-query&logoColor=white" alt="TanStack Query" />
 
 </div>
 
