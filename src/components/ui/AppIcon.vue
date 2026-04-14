@@ -30,6 +30,7 @@ const paths = {
   image: 'M5 6.5h14a1.5 1.5 0 011.5 1.5v8a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 16V8A1.5 1.5 0 015 6.5zm2.5 7 2.3-2.8 2.8 3.3 2-2.4 2.7 3.4M8 10.3h.01',
   arrowup: 'M12 19V5m0 0-6 6m6-6 6 6',
   chevrondown: 'M6 9l6 6 6-6',
+  close: 'M6 6l12 12M18 6 6 18',
 }
 
 const d = computed(() => paths[props.name] || paths.sparkles)

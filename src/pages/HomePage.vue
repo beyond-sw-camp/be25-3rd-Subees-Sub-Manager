@@ -122,17 +122,17 @@ const categories = [
 ]
 
 const steps = [
-  { n: '1', title: '구독 등록', desc: '카테고리와 서비스, 금액, 결제 주기를 한 번에 입력합니다.', detail: '대표 로고 선택 + 직접 입력 지원', type: 'core', value: '구독 추가', fallback: 'plus' },
-  { n: '2', title: '카드 연결', desc: '토스·현대·신한 등 실제 카드 이미지로 결제수단을 정리합니다.', detail: '결제 카드와 시작일을 함께 저장', type: 'card', value: '현대카드', fallback: 'creditcard' },
-  { n: '3', title: '월간 확인', desc: '달력에서 날짜별 결제 아이콘과 총액을 빠르게 훑습니다.', detail: '선택 날짜 상세 패널 즉시 확인', type: 'core', value: '결제 캘린더', fallback: 'calendar' },
-  { n: '4', title: '정리 판단', desc: '대시보드에서 카테고리 비중과 가까운 결제 일정을 확인합니다.', detail: '과한 지출 카테고리부터 점검', type: 'core', value: '대시보드', fallback: 'home' },
+  { n: '1', title: '구독 등록', desc: '카테고리와 서비스, 금액, 결제 주기를 한 번에 입력합니다.', detail: '대표 로고 선택 + 직접 입력 지원', image: '/image/home/upload.png', imageAlt: '구독 등록 흐름 이미지' },
+  { n: '2', title: '카드 연결', desc: '토스·현대·신한 등 실제 카드 이미지로 결제수단을 정리합니다.', detail: '결제 카드와 시작일을 함께 저장', image: '/image/home/connect.png', imageAlt: '카드 연결 흐름 이미지' },
+  { n: '3', title: '월간 확인', desc: '달력에서 날짜별 결제 아이콘과 총액을 빠르게 훑습니다.', detail: '선택 날짜 상세 패널 즉시 확인', image: '/image/home/check.png', imageAlt: '월간 확인 흐름 이미지' },
+  { n: '4', title: '정리 판단', desc: '대시보드에서 카테고리 비중과 가까운 결제 일정을 확인합니다.', detail: '과한 지출 카테고리부터 점검', image: '/image/home/ok.png', imageAlt: '정리 판단 흐름 이미지' },
 ]
 
 const quickMenus = [
-  { label: '대시보드', desc: '이번 달 결제 금액과 다음 결제일 확인', meta: '핵심 요약', to: '/dashboard', type: 'core', value: '대시보드', fallback: 'home' },
-  { label: '구독 추가', desc: '카테고리부터 카드 선택까지 바로 등록', meta: '등록 시작', to: '/subscriptions/new', type: 'core', value: '구독 추가', fallback: 'plus' },
-  { label: '결제 캘린더', desc: '날짜별 일정과 월 총액을 한 화면에서 확인', meta: '일정 확인', to: '/calendar', type: 'core', value: '결제 캘린더', fallback: 'calendar' },
-  { label: '구독목록', desc: '서비스명 검색 후 전체 항목을 빠르게 정리', meta: '목록 관리', to: '/subscriptions', type: 'core', value: '구독목록', fallback: 'list' },
+  { label: '대시보드', desc: '이번 달 결제 금액과 다음 결제일 확인', meta: '핵심 요약', to: '/dashboard', icon: 'home' },
+  { label: '구독 추가', desc: '카테고리부터 카드 선택까지 바로 등록', meta: '등록 시작', to: '/subscriptions/new', icon: 'plus' },
+  { label: '결제 캘린더', desc: '날짜별 일정과 월 총액을 한 화면에서 확인', meta: '일정 확인', to: '/calendar', icon: 'calendar' },
+  { label: '구독목록', desc: '서비스명 검색 후 전체 항목을 빠르게 정리', meta: '목록 관리', to: '/subscriptions', icon: 'list' },
 ]
 
 const faqs = [
@@ -201,15 +201,15 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="px-6 pt-6 pb-8 xl:px-8 2xl:px-10">
-      <div class="public-shell">
+      <div class="public-shell home-shell">
         <section class="section-card overflow-hidden">
-          <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between 2xl:gap-7">
             <div class="min-w-0 flex-1">
               <div class="mt-1 inline-flex rounded-full bg-[rgba(242,210,33,0.16)] px-3 py-1 text-xs font-extrabold text-[#8A6A00]">Subees Preview</div>
               <h1 class="mt-5 text-[34px] font-bold leading-[1.14] tracking-[-0.05em] text-neutral-900 lg:text-[52px]">
                 흩어진 구독을 한 곳에 모아,<br class="hidden lg:block" />이번 달 결제와 다음 일정을 바로 확인하세요.
               </h1>
-              <p class="mt-4 max-w-[780px] text-[16px] leading-8 text-neutral-500">{{ introCopy }}</p>
+              <p class="mt-4 max-w-[760px] text-[16px] leading-8 text-neutral-600">{{ introCopy }}</p>
 
               <div class="mt-5 flex flex-wrap gap-2.5">
                 <span
@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
               </div>
               <p class="mt-3 cta-helper">{{ isAuthed ? '이번 달 결제 요약을 확인한 뒤, 구독 추가나 결제 캘린더로 바로 이동할 수 있습니다.' : '회원가입 후 바로 로그인해 대시보드와 결제 캘린더를 이용할 수 있습니다.' }}</p>
 
-              <div class="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div class="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:gap-4">
                 <article v-for="stat in summaryStats" :key="stat.label" class="ghost-card p-5">
                   <p class="text-[13px] font-bold text-neutral-500">{{ stat.label }}</p>
                   <strong class="mt-3 block text-[26px] font-bold tracking-[-0.03em] text-neutral-900">{{ stat.value }}</strong>
@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <aside class="shell-card bg-[linear-gradient(180deg,rgba(242,210,33,0.14),rgba(255,253,247,0.94))] p-6 xl:w-[390px] xl:shrink-0 2xl:w-[430px]">
+            <aside class="shell-card bg-[linear-gradient(180deg,rgba(242,210,33,0.14),rgba(255,253,247,0.94))] p-6 xl:w-[378px] xl:shrink-0 2xl:w-[410px]">
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="eyebrow-label">Preview</p>
@@ -308,14 +308,14 @@ onBeforeUnmount(() => {
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <article v-for="card in featureCards" :key="card.title" class="shell-card p-5">
               <div class="flex items-center gap-4">
-                <div class="grid h-14 w-14 place-items-center rounded-[18px] bg-[linear-gradient(180deg,#f2d221,#e0bc15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-[rgba(138,106,0,0.18)]">
+                <div class="grid h-16 w-16 place-items-center rounded-[20px] bg-[linear-gradient(180deg,#f2d221,#e0bc15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-[rgba(138,106,0,0.18)]">
                   <AppAsset
                     type="core"
                     :value="card.title"
                     :fallback="card.fallback"
-                    :size="20"
+                    :size="22"
                     wrapper-class="inline-flex items-center justify-center"
-                    image-class="h-8 w-8 object-contain"
+                    image-class="h-9 w-9 object-contain"
                     icon-class="text-white"
                   />
                 </div>
@@ -402,18 +402,12 @@ onBeforeUnmount(() => {
             <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">등록부터 확인까지 한 번에 이어지는 구조입니다</h2>
             <p class="mt-2 body-copy">한 화면마다 해야 할 일을 줄이고, 다음 화면으로 자연스럽게 이어지도록 구성했습니다.</p>
             <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <article v-for="step in steps" :key="step.n" class="ghost-card flex h-full flex-col p-5">
+              <article v-for="step in steps" :key="step.n" class="ghost-card flex h-full flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-soft">
                 <div class="flex items-center gap-3">
                   <span class="grid h-10 w-10 place-items-center rounded-full bg-brand-500 text-sm font-bold text-[#231A07]">{{ step.n }}</span>
-                  <AppAsset
-                    :type="step.type"
-                    :value="step.value"
-                    :fallback="step.fallback"
-                    :size="16"
-                    wrapper-class="inline-flex items-center justify-center"
-                    image-class="h-8 w-8 object-contain"
-                    icon-class="text-[#8A6A00]"
-                  />
+                  <span class="grid h-16 w-16 place-items-center overflow-hidden rounded-[22px] bg-white ring-1 ring-[rgba(46,34,10,0.08)] shadow-soft">
+                    <img :src="step.image" :alt="step.imageAlt" class="h-11 w-11 object-contain" />
+                  </span>
                 </div>
                 <strong class="mt-4 block text-base text-neutral-900">{{ step.title }}</strong>
                 <p class="mt-2 text-sm leading-6 text-neutral-600">{{ step.desc }}</p>
@@ -431,18 +425,10 @@ onBeforeUnmount(() => {
               <span class="guide-pill">핵심 메뉴 4개</span>
             </div>
             <div class="mt-6 grid gap-4 sm:grid-cols-2">
-              <button v-for="menu in quickMenus" :key="menu.label" type="button" class="ghost-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-soft" @click="go(menu.to, true)">
+              <button v-for="menu in quickMenus" :key="menu.label" type="button" class="ghost-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-4 focus:ring-[rgba(242,210,33,0.16)]" @click="go(menu.to, true)">
                 <div class="flex items-start justify-between gap-3">
-                  <div class="grid h-12 w-12 place-items-center rounded-[18px] bg-white ring-1 ring-[rgba(46,34,10,0.08)]">
-                    <AppAsset
-                      :type="menu.type"
-                      :value="menu.value"
-                      :fallback="menu.fallback"
-                      :size="16"
-                      wrapper-class="inline-flex items-center justify-center"
-                      image-class="h-8 w-8 object-contain"
-                      icon-class="text-[#8A6A00]"
-                    />
+                  <div class="grid h-16 w-16 place-items-center rounded-[22px] bg-white ring-1 ring-[rgba(46,34,10,0.08)] shadow-soft text-[#8A6A00]">
+                    <AppIcon :name="menu.icon" :size="24" />
                   </div>
                   <span class="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8A6A00]">{{ menu.meta }}</span>
                 </div>
@@ -482,3 +468,10 @@ onBeforeUnmount(() => {
     </button>
   </div>
 </template>
+
+
+<style scoped>
+.home-shell {
+  max-width: min(100%, 1660px);
+}
+</style>

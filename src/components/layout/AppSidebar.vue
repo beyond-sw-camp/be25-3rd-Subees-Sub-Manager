@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import BrandLockup from '@/components/common/BrandLockup.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
 const route = useRoute()
@@ -33,12 +32,20 @@ const isActive = (to) => route.path === to || route.path.startsWith(`${to}/`)
 </script>
 
 <template>
-  <aside class="side hidden xl:flex">
-    <RouterLink to="/" class="side__brand utility-panel">
-      <BrandLockup eyebrow="Subscription Utility" title="Subees" subtitle="구독·결제·캘린더를 한 곳에 정리해요" :size="58" />
-    </RouterLink>
-
+  <aside class="side hidden lg:flex">
     <nav class="side__nav utility-panel">
+      <RouterLink to="/" class="side__intro" aria-label="홈으로 이동">
+        <div class="side__intro-head">
+          <div class="side__intro-logo-wrap">
+            <img src="/image/subees-logo.png" alt="Subees 홈" class="side__intro-logo" />
+          </div>
+          <div class="side__intro-copy">
+            <p class="side__intro-eyebrow">Subscription Utility</p>
+            <strong class="side__intro-title">Subees</strong>
+          </div>
+        </div>
+      </RouterLink>
+
       <template v-for="section in sections" :key="section.title">
         <div class="side__group-label">{{ section.title }}</div>
         <RouterLink
@@ -63,67 +70,126 @@ const isActive = (to) => route.path === to || route.path.startsWith(`${to}/`)
 
 <style scoped>
 .side {
-  position: sticky;
-  top: 0;
-  height: calc(100vh - 64px);
-  width: 320px;
-  padding: 22px 18px;
+  position: fixed;
+  left: clamp(16px, 1.45vw, 26px);
+  top: 16px;
+  bottom: 16px;
+  width: var(--shell-side-width);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  z-index: 40;
 }
-.side__brand {
-  width: 100%;
-  padding: 18px;
-  text-decoration: none;
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-.side__brand:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 30px rgba(33, 24, 8, 0.07);
-  border-color: rgba(242, 210, 33, 0.18);
-}
+
 .side__nav {
-  padding: 14px;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 12px 16px;
   display: grid;
-  gap: 6px;
-  overflow-y: auto;
+  align-content: start;
+  gap: 5px;
+  overflow: hidden;
 }
+
+.side__intro {
+  display: grid;
+  gap: 0;
+  padding: 10px 10px 14px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(46, 34, 10, 0.08);
+  margin-bottom: 6px;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+.side__intro:hover {
+  transform: translateY(-1px);
+}
+
+.side__intro-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.side__intro-logo-wrap {
+  display: grid;
+  place-items: center;
+}
+
+.side__intro-logo {
+  width: clamp(50px, 3.35vw, 60px);
+  height: clamp(50px, 3.35vw, 60px);
+  object-fit: contain;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,253,249,0.98), rgba(247,241,227,0.95));
+  border: 1px solid rgba(46,34,10,0.08);
+  padding: 6px;
+  box-shadow: 0 10px 18px rgba(33, 24, 8, 0.05);
+}
+
+.side__intro-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.side__intro-eyebrow {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: #c7b895;
+}
+
+.side__intro-title {
+  display: block;
+  font-size: clamp(20px, 1.5vw, 24px);
+  line-height: 1.02;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+  color: #1e180d;
+}
+
+
 .side__group-label {
-  padding: 6px 8px 8px;
-  font-size: 11px;
-  font-weight: 800;
+  padding: 7px 8px 6px;
+  font-size: 10px;
+  font-weight: 900;
   color: #c7b895;
   text-transform: uppercase;
-  letter-spacing: .08em;
+  letter-spacing: .11em;
 }
+
 .side__item {
-  min-height: 60px;
+  min-height: 52px;
   border: 1px solid transparent;
-  border-radius: 22px;
+  border-radius: 20px;
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 9px 10px;
   color: #61563d;
   font-weight: 700;
   text-decoration: none;
   transition: transform .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease;
 }
+
 .side__item:hover {
   background: rgba(247, 241, 227, 0.84);
   border-color: rgba(46, 34, 10, 0.08);
 }
+
 .side__item--active {
   background: rgba(242, 210, 33, 0.16);
   border-color: rgba(242, 210, 33, 0.28);
   color: #8a6a00;
 }
+
 .side__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 15px;
   display: grid;
   place-items: center;
   background: rgba(247, 241, 227, 0.96);
@@ -131,29 +197,47 @@ const isActive = (to) => route.path === to || route.path.startsWith(`${to}/`)
   color: #61563d;
   flex-shrink: 0;
 }
+
 .side__icon--active {
   color: #8a6a00;
   background: rgba(255, 249, 226, 0.96);
   border-color: rgba(242, 210, 33, 0.3);
 }
+
 .side__item-copy {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
+
 .side__item-label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
   color: #302516;
 }
+
 .side__item-description {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #61563d;
-  line-height: 1.4;
+  line-height: 1.28;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-@media (min-width: 1536px) {
-  .side {
-    width: 336px;
+
+@media (min-width: 1680px) {
+  .side__item {
+    min-height: 56px;
+  }
+
+  .side__item-label {
+    font-size: 15px;
+  }
+
+  .side__item-description {
+    font-size: 11.5px;
   }
 }
 </style>

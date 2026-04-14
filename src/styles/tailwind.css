@@ -7,6 +7,7 @@
 @layer base {
   html {
     font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -26,7 +27,8 @@
 
 @layer components {
   .app-frame {
-    @apply mx-auto flex w-full max-w-publicShell gap-7 px-6 py-6 xl:px-8 2xl:px-10;
+    --shell-side-width: clamp(276px, 17.8vw, 304px);
+    @apply w-full px-4 py-4 lg:px-5 xl:px-6;
   }
 
   .shell-main {
@@ -34,11 +36,11 @@
   }
 
   .public-shell {
-    @apply mx-auto flex w-full max-w-publicShell flex-col gap-8;
+    @apply mx-auto flex w-full max-w-publicShell flex-col gap-8 2xl:gap-9;
   }
 
   .page-stack {
-    @apply grid gap-6;
+    @apply grid gap-6 xl:gap-7;
   }
 
   .page-eyebrow {
@@ -50,7 +52,7 @@
   }
 
   .page-description {
-    @apply mt-3 max-w-4xl text-base leading-7 text-neutral-500;
+    @apply mt-3 max-w-4xl text-base leading-7 text-neutral-600;
   }
 
   .section-heading {
@@ -62,19 +64,19 @@
   }
 
   .body-copy {
-    @apply text-base leading-7 text-neutral-500;
+    @apply text-base leading-7 text-neutral-600;
   }
 
   .meta-copy {
-    @apply text-[14px] leading-6 text-neutral-300;
+    @apply text-[14px] leading-6 text-neutral-400;
   }
 
   .utility-panel {
-    @apply rounded-[28px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.92)] shadow-soft;
+    @apply rounded-[28px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.96)] shadow-soft backdrop-blur;
   }
 
   .section-card {
-    @apply shell-card p-6 md:p-7 xl:p-8;
+    @apply shell-card p-6 md:p-7 xl:p-8 2xl:p-9;
   }
 
   .dense-card {
@@ -82,11 +84,11 @@
   }
 
   .shell-card {
-    @apply rounded-card border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.92)] shadow-soft;
+    @apply rounded-card border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.94)] shadow-soft backdrop-blur-[2px];
   }
 
   .ghost-card {
-    @apply rounded-card border border-[rgba(46,34,10,0.08)] bg-brand-50;
+    @apply rounded-card border border-[rgba(46,34,10,0.08)] bg-[rgba(255,249,226,0.76)];
   }
 
   .kpi-value {
@@ -166,7 +168,7 @@
   }
 
   .chip-button {
-    @apply inline-flex min-h-[38px] items-center justify-center rounded-full border border-transparent bg-brand-50 px-4 text-sm font-bold text-neutral-500 transition hover:border-[rgba(46,34,10,0.08)] hover:text-neutral-900;
+    @apply inline-flex min-h-[40px] items-center justify-center rounded-full border border-transparent bg-brand-50 px-4 text-sm font-bold text-neutral-600 transition hover:border-[rgba(46,34,10,0.08)] hover:text-neutral-900;
   }
 
   .chip-button.is-selected {
@@ -184,5 +186,20 @@
 
   .status-danger {
     @apply text-danger;
+  }
+}
+
+
+@media (min-width: 1024px) {
+  .app-frame {
+    padding-left: clamp(16px, 1.45vw, 26px);
+    padding-right: clamp(18px, 1.6vw, 30px);
+    padding-top: 16px;
+    padding-bottom: 18px;
+  }
+
+  .shell-main {
+    margin-left: calc(var(--shell-side-width) + clamp(18px, 1.65vw, 28px));
+    width: calc(100% - var(--shell-side-width) - clamp(18px, 1.65vw, 28px));
   }
 }

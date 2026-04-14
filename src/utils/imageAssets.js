@@ -60,9 +60,9 @@ const CORE_MAP = defineMap([
   [['registration', '구독 등록', '구독등록', '구독 추가', '구독추가'], '/image/core_images/registration.png'],
   [['alarm', '알림', '결제일 알림', '결제알림'], '/image/core_images/alarm.png'],
   [['calendar', 'calender', '결제 캘린더', '캘린더'], '/image/core_images/calender.png'],
-  [['analyze', 'analysis', '지출 분석', '지출분석', '소비 분석'], '/image/core_images/analyze.png'],
-  [['reduction', '절감', '절감 제안', '절감제안'], '/image/core_images/reduction.png'],
-  [['inventory', 'list', '구독목록', '구독 목록', 'faq', '전체 기능'], '/image/core_images/inventory.png'],
+  [['analyze', 'analysis', '지출 분석', '지출분석', '소비 분석', '대시보드', '카테고리 분류', '카테고리분류'], '/image/core_images/analyze.png'],
+  [['reduction', '절감', '절감 제안', '절감제안', '절감 포인트', '절감포인트'], '/image/core_images/reduction.png'],
+  [['inventory', 'list', '구독목록', '구독 목록', 'faq', '전체 기능', '커뮤니티', 'FAQ'], '/image/core_images/inventory.png'],
 ])
 
 const MENU_MAP = defineMap([

@@ -197,7 +197,7 @@ watch(
 
 <template>
   <AppShell title="hidden">
-    <section class="wizard mx-auto w-full max-w-[1480px]">
+    <section class="wizard mx-auto w-full max-w-[1500px]">
       <div class="mb-5 rounded-card border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.92)] px-7 py-6 shadow-soft">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -249,7 +249,7 @@ watch(
                 fallback="grid"
                 :size="18"
                 wrapper-class="inline-flex items-center justify-center"
-                image-class="h-12 w-12 object-contain"
+                image-class="h-24 w-24 object-contain lg:h-28 lg:w-28 xl:h-32 xl:w-32"
                 icon-class="text-[#8A6A00]"
               />
               </div>
@@ -282,7 +282,7 @@ watch(
                 fallback="sparkles"
                 :size="16"
                 wrapper-class="inline-flex items-center justify-center"
-                image-class="h-7 w-7 object-contain"
+                image-class="h-11 w-11 object-contain"
                 icon-class="text-[#8A6A00]"
               />
               </span>
@@ -310,7 +310,7 @@ watch(
               fallback="sparkles"
               :size="20"
               wrapper-class="inline-flex items-center justify-center"
-              image-class="h-12 w-12 object-contain"
+              image-class="h-20 w-20 object-contain"
               icon-class="text-[#8A6A00]"
             />
             </div>
@@ -370,7 +370,7 @@ watch(
                   fallback="creditcard"
                   :size="18"
                   wrapper-class="inline-flex items-center justify-center"
-                  image-class="h-8 w-8 object-contain"
+                  image-class="h-12 w-12 object-contain"
                   icon-class="text-[#8A6A00]"
                   badge-class="inline-flex min-w-[44px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
                 />
@@ -413,7 +413,7 @@ watch(
                 fallback="creditcard"
                 :size="16"
                 wrapper-class="inline-flex items-center justify-center"
-                image-class="h-8 w-8 object-contain"
+                image-class="h-12 w-12 object-contain"
                 icon-class="text-[#8A6A00]"
                 badge-class="inline-flex min-w-[48px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
               />
@@ -435,7 +435,7 @@ watch(
                 fallback="sparkles"
                 :size="20"
                 wrapper-class="inline-flex items-center justify-center"
-                image-class="h-12 w-12 object-contain"
+                image-class="h-20 w-20 object-contain"
                 icon-class="text-[#8A6A00]"
               />
               </div>
@@ -479,7 +479,7 @@ watch(
 <style scoped>
 .wizard__top {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 18px;
 }
 
@@ -504,7 +504,7 @@ watch(
 }
 
 .wizard__body {
-  padding: 28px;
+  padding: clamp(24px, 2.3vw, 34px);
 }
 
 .wizard__heading {
@@ -531,7 +531,7 @@ watch(
 }
 
 .wizard__selection {
-  padding: 16px 18px;
+  padding: 18px 20px;
   display: grid;
   gap: 4px;
   background: rgba(242, 210, 33, 0.12);
@@ -551,13 +551,13 @@ watch(
 
 .wizard__tile-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
 
 .wizard__tile {
   position: relative;
-  padding: 14px;
+  padding: 20px;
   border: 1px solid rgba(46, 34, 10, 0.08);
   border-radius: 22px;
   background: rgba(255, 253, 247, 0.92);
@@ -611,13 +611,13 @@ watch(
 }
 
 .wizard__tile-image {
-  height: 108px;
-  font-size: 28px;
+  height: 176px;
+  font-size: 34px;
   background: linear-gradient(180deg, rgba(242,210,33,0.18), rgba(255,253,247,0.98));
 }
 
 .wizard__tile-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   color: #1e180d;
 }
@@ -625,15 +625,15 @@ watch(
 .wizard__chip-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .wizard__service-chip {
   border: 1px solid rgba(46, 34, 10, 0.08);
   background: rgba(255, 253, 247, 0.92);
   border-radius: 999px;
-  min-height: 54px;
-  padding: 0 16px;
+  min-height: 64px;
+  padding: 0 20px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -650,9 +650,9 @@ watch(
 }
 
 .wizard__service-chip-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   font-size: 12px;
   background: linear-gradient(180deg, rgba(242,210,33,0.16), rgba(255,253,247,0.96));
 }
@@ -666,14 +666,14 @@ watch(
   padding: 16px;
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 14px;
+  gap: 16px;
   align-items: center;
 }
 
 .wizard__icon-preview,
 .wizard__review-icon {
-  width: 56px;
-  height: 56px;
+  width: 88px;
+  height: 88px;
   border-radius: 20px;
   font-size: 18px;
 }
@@ -707,8 +707,8 @@ watch(
 }
 
 .wizard__card-thumb {
-  width: 44px;
-  height: 44px;
+  width: 54px;
+  height: 54px;
   border-radius: 16px;
   flex-shrink: 0;
 }
@@ -763,7 +763,7 @@ watch(
 
 .picker-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -779,8 +779,8 @@ watch(
 }
 
 .picker-card__img {
-  height: 82px;
-  font-size: 20px;
+  height: 124px;
+  font-size: 24px;
 }
 
 .picker-card__label {
@@ -789,23 +789,17 @@ watch(
   color: #1e180d;
 }
 
-@media (max-width: 900px) {
-  .wizard__tile-grid,
-  .picker-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1280px) {
+  .wizard__icon-box {
+    grid-template-columns: auto 1fr;
+  }
+
+  .wizard__icon-actions {
+    grid-column: 1 / -1;
   }
 }
 
-@media (max-width: 760px) {
-  .wizard__body {
-    padding: 22px;
-  }
-
-  .wizard__icon-box {
-    grid-template-columns: 1fr;
-    justify-items: start;
-  }
-
+@media (max-width: 1120px) {
   .wizard__actions {
     grid-template-columns: 1fr;
   }

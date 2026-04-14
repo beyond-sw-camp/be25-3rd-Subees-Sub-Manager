@@ -1,16 +1,21 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import HeaderNotificationsPopover from '@/components/layout/HeaderNotificationsPopover.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
-const { unreadCount } = storeToRefs(notificationsStore)
+const { unreadCount, visibleNotifications } = storeToRefs(notificationsStore)
+
+const notificationsOpen = ref(false)
+const notificationsLayer = ref(null)
+const notificationButton = ref(null)
 
 const pageMeta = computed(() => {
   const byName = {
@@ -114,6 +119,66 @@ const headerActions = computed(() => {
   }
 })
 
+const closeNotifications = () => {
+  notificationsOpen.value = false
+}
+
+const toggleNotifications = async () => {
+  notificationsOpen.value = !notificationsOpen.value
+  if (notificationsOpen.value) {
+    await nextTick()
+  }
+}
+
+const openNotificationsPage = (notificationId = null) => {
+  closeNotifications()
+  router.push({
+    path: '/notifications',
+    query: notificationId ? { notificationId: String(notificationId) } : undefined,
+  })
+}
+
+const handleNotificationSelect = (notificationId) => {
+  notificationsStore.markAsRead(notificationId)
+  openNotificationsPage(notificationId)
+}
+
+const handleNotificationDismiss = (notificationId) => {
+  notificationsStore.closeNotification(notificationId)
+}
+
+const handlePointerDown = (event) => {
+  if (!notificationsOpen.value) return
+
+  const target = event.target
+  const clickedLayer = notificationsLayer.value?.contains(target)
+  const clickedButton = notificationButton.value?.contains(target)
+
+  if (!clickedLayer && !clickedButton) {
+    closeNotifications()
+  }
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    closeNotifications()
+  }
+}
+
+watch(() => route.fullPath, () => {
+  closeNotifications()
+})
+
+onMounted(() => {
+  window.addEventListener('pointerdown', handlePointerDown)
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', handlePointerDown)
+  window.removeEventListener('keydown', handleKeydown)
+})
+
 const handleLogout = async () => {
   await authStore.logout()
   router.push('/')
@@ -121,7 +186,7 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <header class="sticky top-3 z-30 mb-4 overflow-hidden rounded-[26px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,249,0.84)] shadow-soft backdrop-blur">
+  <header class="sticky top-3 z-30 mb-4 overflow-visible rounded-[26px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,249,0.84)] shadow-soft backdrop-blur">
     <div class="flex flex-col gap-4 bg-[linear-gradient(180deg,rgba(240,228,186,0.3),rgba(255,253,249,0.82))] px-5 py-4 lg:flex-row lg:items-center lg:justify-between xl:px-6">
       <div class="min-w-0 flex-1">
         <p class="page-eyebrow">{{ pageMeta.eyebrow }}</p>
@@ -130,10 +195,22 @@ const handleLogout = async () => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2.5 lg:justify-end">
-        <RouterLink to="/notifications" class="relative tertiary-button !min-h-10 !px-3.5">
-          <span class="inline-flex items-center gap-2"><AppIcon name="bell" :size="16" />알림</span>
-          <span v-if="unreadCount" class="absolute -right-1 -top-1 inline-flex min-w-[20px] items-center justify-center rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-black text-[#231A07]">{{ unreadCount }}</span>
-        </RouterLink>
+        <div ref="notificationsLayer" class="relative">
+          <button ref="notificationButton" type="button" class="relative tertiary-button !min-h-10 !px-3.5" aria-haspopup="dialog" :aria-expanded="notificationsOpen" aria-label="알림 열기" @click="toggleNotifications">
+            <span class="inline-flex items-center gap-2"><AppIcon name="bell" :size="16" />알림</span>
+            <span v-if="unreadCount" class="absolute -right-1 -top-1 inline-flex min-w-[20px] items-center justify-center rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-black text-[#231A07]">{{ unreadCount }}</span>
+          </button>
+
+          <HeaderNotificationsPopover
+            v-if="notificationsOpen"
+            :notifications="visibleNotifications"
+            :unread-count="unreadCount"
+            @close="closeNotifications"
+            @select="handleNotificationSelect"
+            @dismiss="handleNotificationDismiss"
+            @open-all="openNotificationsPage()"
+          />
+        </div>
         <RouterLink to="/" class="tertiary-button !min-h-10 !px-3.5">메인</RouterLink>
         <RouterLink :to="headerActions.secondary.to" class="secondary-button !min-h-10 !px-4">{{ headerActions.secondary.label }}</RouterLink>
         <RouterLink :to="headerActions.primary.to" class="primary-button !min-h-10 !px-4">{{ headerActions.primary.label }}</RouterLink>

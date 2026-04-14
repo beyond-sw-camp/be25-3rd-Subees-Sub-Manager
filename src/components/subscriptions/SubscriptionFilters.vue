@@ -31,7 +31,7 @@ const sortOptions = [
 </script>
 
 <template>
-  <section class="shell-card p-5 md:p-6">
+  <section class="shell-card p-5 md:p-6 xl:p-7">
     <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <div>
         <p class="text-sm font-semibold text-[#8A6A00]">구독 검색 / 필터</p>
@@ -45,7 +45,7 @@ const sortOptions = [
       </div>
     </div>
 
-    <div class="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
+    <div class="mt-6 grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
       <label class="rounded-[24px] border border-[rgba(138,106,0,0.18)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(46,34,10,0.04)]">
         <div class="flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#8A6A00]">
           <AppIcon name="search" :size="14" />
@@ -55,7 +55,7 @@ const sortOptions = [
           <input
             :value="props.modelValue"
             type="text"
-            class="w-full border-0 bg-transparent p-0 text-[18px] font-bold text-neutral-900 outline-none placeholder:text-neutral-400"
+            class="w-full border-0 bg-transparent p-0 text-[18px] font-bold tracking-[-0.03em] text-neutral-900 outline-none placeholder:text-neutral-400 xl:text-[20px]"
             placeholder="예: 넷플릭스, ChatGPT, 멜론"
             @input="emit('update:modelValue', $event.target.value)"
           />
@@ -74,7 +74,7 @@ const sortOptions = [
         <div class="text-[12px] font-extrabold uppercase tracking-[0.08em] text-neutral-500">정렬 기준</div>
         <div class="mt-2 flex items-center gap-2">
           <select
-            class="w-full border-0 bg-transparent p-0 text-[18px] font-bold text-neutral-900 outline-none"
+            class="w-full border-0 bg-transparent p-0 text-[18px] font-bold tracking-[-0.03em] text-neutral-900 outline-none xl:text-[20px]"
             :value="selectedSort"
             @change="emit('select-sort', $event.target.value)"
           >

@@ -46,32 +46,37 @@ const cancelDelete = () => {
 <template>
   <AppShell title="hidden">
     <div class="grid gap-6">
-      <section class="shell-card p-7 md:p-8">
-        <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div>
+      <section class="shell-card px-6 py-6 md:px-7 md:py-7 xl:px-8 xl:py-8">
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,388px)] xl:items-start 2xl:gap-6">
+          <div class="subscription-hero-copy flex min-h-full flex-col justify-between">
             <p class="text-sm font-semibold text-[#8A6A00]">사용자님, 구독·결제·캘린더를 한 곳에 정리했어요!</p>
-            <h1 class="mt-3 page-title !mt-0 !text-[34px] xl:!text-[42px]">구독 목록을 한눈에 살펴보세요.</h1>
-            <p class="mt-3 max-w-4xl body-copy">
+            <div class="mt-4 inline-flex min-h-[34px] items-center rounded-full border border-[rgba(242,210,33,0.2)] bg-[rgba(242,210,33,0.12)] px-3.5 text-[12px] font-extrabold text-[#8A6A00]">구독 현황 요약</div>
+            <h1 class="mt-4 page-title !max-w-[16ch] !text-[34px] xl:!text-[40px]">구독 목록을 한눈에 살펴보세요.</h1>
+            <p class="mt-4 max-w-[72ch] body-copy">
               서비스 이름으로 검색하고 카테고리별로 모아보면서, 선택한 항목의 상세 정보와 수정 내용을 바로 확인할 수 있어요.
             </p>
             <p class="mt-3 cta-helper">목록은 전체를 먼저 훑은 뒤, 필요한 카테고리로 좁혀가며 보는 흐름이 가장 빠릅니다.</p>
+            <div class="mt-5 flex flex-wrap gap-2.5">
+              <span class="guide-pill">검색 → 카테고리 → 상세 확인</span>
+              <span class="guide-pill">오른쪽 패널에서 즉시 수정</span>
+            </div>
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-            <article class="ghost-card p-4">
+          <div class="grid gap-3 sm:grid-cols-2 xl:content-start xl:self-start">
+            <article class="ghost-card h-full p-4 md:p-5">
               <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">전체 구독</p>
-              <p class="mt-3 text-2xl font-bold tracking-[-0.03em] text-neutral-900">총 {{ totalCount }}개</p>
-              <p class="mt-2 body-copy">현재 등록된 구독 항목 기준</p>
+              <p class="mt-3 text-[30px] font-bold tracking-[-0.04em] text-neutral-900">총 {{ totalCount }}개</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-500">현재 등록된 구독 항목 기준</p>
             </article>
-            <article class="ghost-card p-4">
+            <article class="ghost-card h-full p-4 md:p-5">
               <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">활성 / 일시정지</p>
-              <p class="mt-3 text-2xl font-bold tracking-[-0.03em] text-neutral-900">{{ activeCount }} / {{ pausedCount }}</p>
-              <p class="mt-2 body-copy">상태 전환으로 일정 노출 조정</p>
+              <p class="mt-3 text-[30px] font-bold tracking-[-0.04em] text-neutral-900">{{ activeCount }} / {{ pausedCount }}</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-500">상태 전환으로 일정 노출 조정</p>
             </article>
-            <article class="ghost-card p-4 sm:col-span-2">
+            <article class="ghost-card h-full p-4 md:p-5 sm:col-span-2">
               <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">월 환산 금액</p>
-              <p class="mt-3 text-2xl font-bold tracking-[-0.03em] text-neutral-900">{{ formatCurrency(monthlyExpectedAmount) }}</p>
-              <p class="mt-2 body-copy">연간 결제는 월 단위로 환산하고, 활성 구독만 합산합니다.</p>
+              <p class="mt-3 text-[30px] font-bold tracking-[-0.04em] text-neutral-900">{{ formatCurrency(monthlyExpectedAmount) }}</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-500">연간 결제는 월 단위로 환산하고, 활성 구독만 합산합니다.</p>
             </article>
           </div>
         </div>
@@ -121,7 +126,7 @@ const cancelDelete = () => {
           </AppStatePanel>
         </div>
 
-        <div class="xl:sticky xl:top-6 xl:self-start">
+        <div class="xl:sticky xl:top-7 xl:self-start">
           <SubscriptionDetailPanel
             :item="selectedSubscription"
             @save="subscriptionsStore.updateSubscription"
@@ -151,3 +156,10 @@ const cancelDelete = () => {
     </div>
   </AppShell>
 </template>
+
+
+<style scoped>
+.subscription-hero-copy {
+  gap: 14px;
+}
+</style>

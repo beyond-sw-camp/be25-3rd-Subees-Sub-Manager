@@ -55,10 +55,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const notifications = ref(loadNotifications())
   const unreadOnly = ref(false)
 
+  const sortedNotifications = computed(() => [...notifications.value].sort((a, b) => b.notificationId - a.notificationId))
   const unreadCount = computed(() => notifications.value.filter((item) => !item.read).length)
   const visibleNotifications = computed(() => {
-    const items = unreadOnly.value ? notifications.value.filter((item) => !item.read) : notifications.value
-    return [...items].sort((a, b) => b.notificationId - a.notificationId)
+    return unreadOnly.value ? sortedNotifications.value.filter((item) => !item.read) : sortedNotifications.value
   })
 
   const persist = () => saveNotifications(notifications.value)
@@ -69,6 +69,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
   const toggleRead = (notificationId) => {
     notifications.value = notifications.value.map((item) => item.notificationId === notificationId ? { ...item, read: !item.read } : item)
+    persist()
+  }
+  const closeNotification = (notificationId) => {
+    notifications.value = notifications.value.filter((item) => item.notificationId !== notificationId)
     persist()
   }
   const markAllRead = () => {
@@ -89,5 +93,18 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }, ...notifications.value]
     persist()
   }
-  return { notifications, unreadOnly, unreadCount, visibleNotifications, toggleUnreadOnly, markAsRead, toggleRead, markAllRead, pushNotification }
+
+  return {
+    notifications,
+    unreadOnly,
+    unreadCount,
+    sortedNotifications,
+    visibleNotifications,
+    toggleUnreadOnly,
+    markAsRead,
+    toggleRead,
+    closeNotification,
+    markAllRead,
+    pushNotification,
+  }
 })
