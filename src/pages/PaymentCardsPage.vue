@@ -6,24 +6,20 @@ import AppAsset from '@/components/ui/AppAsset.vue'
 import { usePaymentCardsStore } from '@/stores/paymentCards'
 
 const paymentCardsStore = usePaymentCardsStore()
-const { cards, selectedCard, cardCount, primaryCard } = storeToRefs(paymentCardsStore)
+const { cards, selectedCard, cardCount } = storeToRefs(paymentCardsStore)
 const isEditing = ref(false)
 const showDeleteConfirm = ref(false)
 const pendingDeleteId = ref(null)
 
-const form = reactive({ cardId: null, cardName: '', issuer: '', typeLabel: '신용카드', lastDigits: '', memo: '' })
+const form = reactive({ cardId: null, cardName: '', issuer: '', typeLabel: '신용카드', memo: '' })
 
-const pageStats = computed(() => [
-  { label: '등록 카드', value: `${cardCount.value}개`, note: '구독 결제에 연결 가능한 카드' },
-  { label: '기본 카드', value: primaryCard.value?.cardName || '-', note: '새 구독 등록 시 기본 선택' },
-])
+
 
 const resetForm = () => {
   form.cardId = null
   form.cardName = ''
   form.issuer = ''
   form.typeLabel = '신용카드'
-  form.lastDigits = ''
   form.memo = ''
   isEditing.value = false
 }
@@ -54,7 +50,7 @@ const confirmDelete = () => {
   showDeleteConfirm.value = false
 }
 
-const formatLastDigits = (value) => value ? `•••• ${value}` : '마지막 4자리 미입력'
+
 </script>
 
 <template>
