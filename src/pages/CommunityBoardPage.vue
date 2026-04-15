@@ -1,4 +1,5 @@
 <script setup>
+import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import CommunityToolbar from '@/components/community/CommunityToolbar.vue'
@@ -9,6 +10,10 @@ import AppStatusBanner from '@/components/ui/AppStatusBanner.vue'
 
 const communityStore = useCommunityStore()
 const { filteredPosts, successMessage, errorMessage } = storeToRefs(communityStore)
+
+onMounted(() => {
+  communityStore.fetchPosts(1)
+})
 </script>
 
 <template>

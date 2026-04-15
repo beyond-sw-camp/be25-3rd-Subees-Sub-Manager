@@ -8,22 +8,21 @@ import { useCommunityStore } from '@/stores/community'
 const route = useRoute()
 const router = useRouter()
 const communityStore = useCommunityStore()
-const { successMessage, errorMessage } = storeToRefs(communityStore)
+const { successMessage, errorMessage, currentPost: post } = storeToRefs(communityStore)
 const showDeleteConfirm = ref(false)
 
 const postId = computed(() => Number(route.params.postId))
-const post = computed(() => communityStore.getPostById(postId.value))
 
-const openCurrentPost = () => {
+const loadPost = async () => {
   if (Number.isNaN(postId.value)) return
-  communityStore.openPost(postId.value)
+  await communityStore.fetchPostDetail(postId.value)
 }
 
-onMounted(openCurrentPost)
-watch(postId, openCurrentPost)
+onMounted(loadPost)
+watch(postId, loadPost)
 
-const handleDelete = () => {
-  const success = communityStore.deletePost(postId.value)
+const handleDelete = async () => {
+  const success = await communityStore.deletePost(postId.value)
   if (success) {
     router.push('/community')
   }
@@ -87,10 +86,10 @@ const copyLink = async () => {
 
           <div class="mt-8 whitespace-pre-line text-[15px] leading-8 text-neutral-700">{{ post.content }}</div>
 
-          <div class="mt-8 border-t border-neutral-200 pt-6">
+          <!-- <div class="mt-8 border-t border-neutral-200 pt-6">
             <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">최근 수정일</p>
             <p class="mt-2 text-sm text-neutral-700">{{ post.updatedAtLabel }}</p>
-          </div>
+          </div> -->
 
           <div class="mt-6 flex justify-end gap-3">
             <RouterLink to="/community" class="secondary-button">목록</RouterLink>

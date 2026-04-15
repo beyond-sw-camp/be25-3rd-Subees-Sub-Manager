@@ -1,68 +1,9 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
+import { getCommunityPosts, getCommunityPostDetail, createCommunityPost, updateCommunityPost, deleteCommunityPost } from '@/api/community'
 
-const STORAGE_KEY = 'subees-community-posts'
 const SCRAP_STORAGE_KEY = 'subees-community-scraps'
-
-const defaultPosts = [
-  {
-    postId: 101,
-    title: 'OTT 구독 너무 많을 때 정리 기준 어떻게 잡으시나요?',
-    content:
-      '넷플릭스, 티빙, 디즈니+, 쿠팡플레이까지 같이 쓰고 있는데 이번 달 지출이 확 늘었습니다.\n\n저는 우선 최근 4주 기준으로 실제 시청 시간을 보고, 독점작이 끝난 서비스부터 정리하려고 합니다. 다른 분들은 어떤 기준으로 줄이시는지 궁금합니다.',
-    authorId: 3,
-    authorNickname: '하늘',
-    createdAt: '2026-03-27T10:20:00',
-    updatedAt: '2026-03-27T10:20:00',
-    viewCount: 128,
-    scrapCount: 24,
-    commentCount: 8,
-    tags: ['OTT', '절감', '구독정리'],
-  },
-  {
-    postId: 102,
-    title: 'AI 구독은 ChatGPT + Claude 같이 쓰는 분들 많나요?',
-    content:
-      '작업용으로 ChatGPT Plus를 계속 쓰고 있는데, 클로드까지 같이 쓰면 생산성이 확실히 올라가는지 고민 중입니다.\n\n실제 사용 패턴이 글쓰기 / 요약 / 기획 정리 쪽인 분들 후기 듣고 싶어요.',
-    authorId: 4,
-    authorNickname: '민호',
-    createdAt: '2026-03-26T18:05:00',
-    updatedAt: '2026-03-28T09:40:00',
-    viewCount: 212,
-    scrapCount: 31,
-    commentCount: 12,
-    tags: ['AI', '생산성', '비교'],
-  },
-  {
-    postId: 103,
-    title: '유튜브 프리미엄 가족 요금제 체감상 만족도 어떠세요?',
-    content:
-      '광고 제거 때문만이 아니라 음악까지 같이 묶여 있어서 계속 유지 중입니다.\n\n다만 다른 음악 서비스와 중복 결제가 생겨서 고민인데, 가족 요금제로 바꾸면 체감이 큰지 궁금합니다.',
-    authorId: 7,
-    authorNickname: '서윤',
-    createdAt: '2026-03-24T14:30:00',
-    updatedAt: '2026-03-24T14:30:00',
-    viewCount: 96,
-    scrapCount: 15,
-    commentCount: 5,
-    tags: ['Music', '가족요금제'],
-  },
-  {
-    postId: 104,
-    title: '클라우드 저장공간 구독, iCloud에서 다른 서비스로 옮긴 분 계신가요?',
-    content:
-      '사진 백업 때문에 iCloud+를 쓰고 있는데 윈도우/안드로이드 혼용 환경이라 점점 불편해지고 있습니다.\n\n실제로 다른 클라우드로 이전해보신 분 있으면 장단점 공유 부탁드립니다.',
-    authorId: 8,
-    authorNickname: '다솜',
-    createdAt: '2026-03-21T09:12:00',
-    updatedAt: '2026-03-22T08:55:00',
-    viewCount: 141,
-    scrapCount: 18,
-    commentCount: 7,
-    tags: ['Cloud', '백업'],
-  },
-]
 
 const loadJson = (key, fallback) => {
   try {
@@ -89,23 +30,80 @@ const formatDateTime = (dateString) => {
 
 export const useCommunityStore = defineStore('community', () => {
   const authStore = useAuthStore()
-  const posts = ref(loadJson(STORAGE_KEY, defaultPosts))
+  const posts = ref([])
+  const currentPost = ref(null)
+  const isLoading = ref(false)
+  const pagination = reactive({
+    page: 1,
+    totalPages: 1,
+    totalCount: 0,
+  })
   const scrappedPostIds = ref(loadJson(SCRAP_STORAGE_KEY, []))
   const filters = reactive({
     query: '',
     sortBy: 'latest',
   })
-  const selectedPostId = ref(posts.value[0]?.postId ?? null)
+  const selectedPostId = ref(null)
   const successMessage = ref('')
   const errorMessage = ref('')
 
-  watch(
-    posts,
-    (value) => {
-      saveJson(STORAGE_KEY, value)
-    },
-    { deep: true },
-  )
+  const fetchPosts = async (page = 1) => {
+    isLoading.value = true
+    try {
+      const response = await getCommunityPosts({ page })
+      const data = response.data.data
+      posts.value = data.posts.map((post) => ({
+        postId: post.postId,
+        title: post.title,
+        authorNickname: post.nickname,
+        authorId: null,
+        createdAt: post.createdAt,
+        updatedAt: post.createdAt,
+        viewCount: post.viewCount,
+        scrapCount: 0,
+        commentCount: 0,
+        content: '',
+        tags: [],
+      }))
+      pagination.page = data.page
+      pagination.totalPages = data.totalPages
+      pagination.totalCount = data.totalCount
+      selectedPostId.value = posts.value[0]?.postId ?? null
+    } catch (error) {
+      setError('게시글 목록을 불러오지 못했습니다.')
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const fetchPostDetail = async (postId) => {
+    isLoading.value = true
+    try {
+      const response = await getCommunityPostDetail(postId)
+      const data = response.data.data
+      currentPost.value = {
+        postId: data.postId,
+        title: data.title,
+        content: data.content,
+        authorNickname: data.nickname,
+        authorId: null,
+        viewCount: data.viewCount,
+        scrapCount: data.scrapCount,
+        createdAt: data.createdAt,
+        updatedAt: data.createdAt,
+        tags: [],
+        isScrapped: scrappedPostIds.value.includes(data.postId),
+        isMine: Boolean(authStore.userId && authStore.userId === data.userId),
+        createdAtLabel: formatDateTime(data.createdAt),
+        updatedAtLabel: formatDateTime(data.createdAt),
+      }
+    } catch (error) {
+      setError('게시글을 불러오지 못했습니다.')
+      currentPost.value = null
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   watch(
     scrappedPostIds,
@@ -215,7 +213,7 @@ export const useCommunityStore = defineStore('community', () => {
     return posts.value[index]
   }
 
-  const createPost = (payload) => {
+  const createPost = async (payload) => {
     clearMessages()
 
     if (!authStore.isLoggedIn) {
@@ -223,75 +221,58 @@ export const useCommunityStore = defineStore('community', () => {
       return null
     }
 
-    const now = new Date().toISOString()
-    const nextPost = {
-      postId: Date.now(),
-      title: payload.title.trim(),
-      content: payload.content.trim(),
-      authorId: authStore.userId,
-      authorNickname: authStore.nickname || '사용자',
-      createdAt: now,
-      updatedAt: now,
-      viewCount: 0,
-      scrapCount: 0,
-      commentCount: 0,
-      tags: payload.tags ?? [],
+    isLoading.value = true
+    try {
+      const response = await createCommunityPost({
+        title: payload.title.trim(),
+        content: payload.content.trim(),
+      })
+      const data = response.data.data
+      setSuccess('게시글이 등록되었습니다.')
+      await fetchPosts(1)
+      return { postId: data.postId }
+    } catch (error) {
+      setError('게시글 등록에 실패했습니다.')
+      return null
+    } finally {
+      isLoading.value = false
     }
-
-    posts.value = [nextPost, ...posts.value]
-    selectedPostId.value = nextPost.postId
-    setSuccess('게시글이 등록되었습니다.')
-    return nextPost
   }
 
-  const updatePost = (postId, payload) => {
+  const updatePost = async (postId, payload) => {
     clearMessages()
-    const targetId = Number(postId)
-    const index = posts.value.findIndex((post) => post.postId === targetId)
-    if (index < 0) {
-      setError('수정할 게시글을 찾을 수 없습니다.')
+    isLoading.value = true
+    try {
+      await updateCommunityPost(postId, {
+        title: payload.title.trim(),
+        content: payload.content.trim(),
+      })
+      setSuccess('게시글이 수정되었습니다.')
+      await fetchPostDetail(postId)
+      return { postId: Number(postId) }
+    } catch (error) {
+      setError('게시글 수정에 실패했습니다.')
       return null
+    } finally {
+      isLoading.value = false
     }
-
-    const target = posts.value[index]
-    if (target.authorId !== authStore.userId) {
-      setError('본인이 작성한 게시글만 수정할 수 있습니다.')
-      return null
-    }
-
-    const updatedPost = {
-      ...target,
-      title: payload.title.trim(),
-      content: payload.content.trim(),
-      tags: payload.tags ?? target.tags,
-      updatedAt: new Date().toISOString(),
-    }
-
-    posts.value[index] = updatedPost
-    selectedPostId.value = updatedPost.postId
-    setSuccess('게시글이 수정되었습니다.')
-    return updatedPost
   }
 
-  const deletePost = (postId) => {
+  const deletePost = async (postId) => {
     clearMessages()
-    const targetId = Number(postId)
-    const target = posts.value.find((post) => post.postId === targetId)
-    if (!target) {
-      setError('삭제할 게시글을 찾을 수 없습니다.')
+    isLoading.value = true
+    try {
+      await deleteCommunityPost(postId)
+      setSuccess('게시글이 삭제되었습니다.')
+      currentPost.value = null
+      await fetchPosts(1)
+      return true
+    } catch (error) {
+      setError('게시글 삭제에 실패했습니다.')
       return false
+    } finally {
+      isLoading.value = false
     }
-
-    if (target.authorId !== authStore.userId) {
-      setError('본인이 작성한 게시글만 삭제할 수 있습니다.')
-      return false
-    }
-
-    posts.value = posts.value.filter((post) => post.postId !== targetId)
-    scrappedPostIds.value = scrappedPostIds.value.filter((id) => id !== targetId)
-    selectedPostId.value = posts.value[0]?.postId ?? null
-    setSuccess('게시글이 삭제되었습니다.')
-    return true
   }
 
   const toggleScrap = (postId) => {
@@ -338,6 +319,10 @@ export const useCommunityStore = defineStore('community', () => {
 
   return {
     filters,
+    isLoading,
+    pagination,
+    currentPost,
+    fetchPostDetail,
     setSuccess,
     setError,
     successMessage,
@@ -356,6 +341,7 @@ export const useCommunityStore = defineStore('community', () => {
     setSort,
     selectPost,
     openPost,
+    fetchPosts,
     createPost,
     updatePost,
     deletePost,

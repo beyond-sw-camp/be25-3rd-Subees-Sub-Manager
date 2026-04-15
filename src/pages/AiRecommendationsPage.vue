@@ -109,14 +109,19 @@ const resetForm = () => {
   form.subscriptionItems = []
 }
 
-const submitAndGenerate = () => {
+const submitAndGenerate = async () => {
   if (!form.subscriptionItems.length) {
     aiStore.setStatusMessage('최소 1개 이상의 구독 항목을 추가해주세요.')
     return
   }
-  const report = aiStore.submitDraft()
-  aiStore.generateRecommendations(report.reportId)
-  router.push({ path: '/ai-recommendations/results', query: { reportId: report.reportId } })
+
+  try {
+    const report = await aiStore.submitDraft()
+    const generated = await aiStore.generateRecommendations(report.reportId)
+    router.push({ path: '/ai-recommendations/results', query: { reportId: generated.reportId } })
+  } catch (error) {
+    // 스토어에서 상태 메시지를 관리합니다.
+  }
 }
 </script>
 
