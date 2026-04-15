@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppAsset from '@/components/ui/AppAsset.vue'
@@ -16,10 +16,28 @@ const optionalItems = computed(() => aiStore.parseItemsJson(report.value?.option
 const budgetRemaining = computed(() => Number(report.value?.maxMonthlyBudget || 0) - Number(report.value?.totalMonthlyPrice || 0))
 const previewRows = computed(() => (report.value?.subscriptionItems || []).slice(0, 4))
 
-const saveReport = () => {
+const hydrateReport = async () => {
+  if (!reportId.value) return
+
+  try {
+    await aiStore.fetchReportDetail(reportId.value)
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
+}
+
+onMounted(hydrateReport)
+watch(reportId, hydrateReport)
+
+const saveReport = async () => {
   if (!report.value) return
-  const saved = aiStore.saveReport(report.value.reportId)
-  if (saved) router.push(`/ai-recommendations/${saved.reportId}`)
+
+  try {
+    const saved = await aiStore.saveReport(report.value.reportId)
+    if (saved) router.push(`/ai-recommendations/${saved.reportId}`)
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
 }
 </script>
 
