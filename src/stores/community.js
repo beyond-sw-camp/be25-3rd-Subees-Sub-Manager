@@ -94,7 +94,7 @@ export const useCommunityStore = defineStore('community', () => {
         updatedAt: data.createdAt,
         // tags: [],
         isScrapped: scrappedPostIds.value.includes(data.postId),
-        // isMine: Boolean(authStore.userId && authStore.userId === data.userId),
+        isMine: Boolean(authStore.nickname && authStore.nickname === data.nickname), //nickname이 localStorage에 저장됨(auth.js)
         createdAtLabel: formatDateTime(data.createdAt),
         updatedAtLabel: formatDateTime(data.createdAt),
       }
