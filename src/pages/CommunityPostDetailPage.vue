@@ -65,7 +65,7 @@ const copyLink = async () => {
               <button type="button" class="primary-button !p-[15px]" @click="handleToggleScrap">
                 {{ post.isScrapped ? '스크랩 해제' : '스크랩하기' }}
               </button>
-              <button type="button" class="secondary-button " @click="copyLink">공유하기</button>
+              <!-- <button type="button" class="secondary-button " @click="copyLink">공유하기</button> -->
               <!-- <RouterLink to="/community/new" class="secondary-button w-full">새 글 작성</RouterLink> -->
             </div>
           </div>
