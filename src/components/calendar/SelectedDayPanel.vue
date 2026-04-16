@@ -1,10 +1,8 @@
 <script setup>
-import AppAsset from '@/components/ui/AppAsset.vue'
-import AppStatePanel from '@/components/ui/AppStatePanel.vue'
-defineProps({
+const props = defineProps({
   dateLabel: {
     type: String,
-    default: '-',
+    default: '',
   },
   totalAmount: {
     type: Number,
@@ -16,92 +14,152 @@ defineProps({
   },
 })
 
-const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
+const formatCurrency = (value) =>
+  `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
-const categoryDisplayName = (categoryName) => {
-  const mapping = {
-    OTT: 'OTT',
+const getCategoryLabel = (categoryName = '') => {
+  const map = {
     Music: '음악',
+    OTT: 'OTT',
     AI: 'AI',
     Cloud: '클라우드',
     Etc: '기타',
+    Other: '기타',
   }
-  return mapping[categoryName] || categoryName
+
+  return map[categoryName] || categoryName || '기타'
 }
 
-const categoryTone = (categoryName) => {
-  const mapping = {
-    OTT: 'bg-[rgba(186,107,82,0.14)] text-[#7B4435] ring-[rgba(186,107,82,0.22)]',
-    Music: 'bg-[rgba(93,130,96,0.14)] text-[#476049] ring-[rgba(93,130,96,0.22)]',
-    AI: 'bg-[rgba(138,106,0,0.12)] text-[#7B5E00] ring-[rgba(138,106,0,0.18)]',
-    Cloud: 'bg-[rgba(199,184,149,0.22)] text-[#6B5B39] ring-[rgba(199,184,149,0.32)]',
-    Etc: 'bg-[rgba(153,140,113,0.14)] text-[#6D6148] ring-[rgba(153,140,113,0.22)]',
-  }
-  return mapping[categoryName] || 'bg-[rgba(46,34,10,0.08)] text-neutral-700 ring-[rgba(46,34,10,0.1)]'
+const getServiceImage = (serviceName = '') => {
+  const label = String(serviceName).toLowerCase()
+
+  // AI
+  if (label.includes('chatgpt')) return '/image/ai/chatgpt.png'
+  if (label.includes('claude')) return '/image/ai/claude.png'
+  if (label.includes('gemini')) return '/image/ai/gemini.png'
+
+  // Music
+  if (label.includes('spotify')) return '/image/music/Spotify.png'
+  if (label.includes('melon')) return '/image/music/melon.png'
+  if (label.includes('genie')) return '/image/music/genie.png'
+  if (label.includes('apple music') || label.includes('applemusic')) return '/image/music/applemusic.png'
+  if (label.includes('vive')) return '/image/music/vive.png'
+
+  // OTT
+  if (label.includes('netflix')) return '/image/ott/netflix.png'
+  if (label.includes('disney')) return '/image/ott/disney.png'
+  if (label.includes('tving')) return '/image/ott/tving.png'
+  if (label.includes('watcha')) return '/image/ott/Watcha.png'
+  if (label.includes('wavve') || label.includes('wave')) return '/image/ott/wave.png'
+  if (label.includes('coupangplay') || label.includes('wave')) return '/image/ott/coupangPlay.png'
+
+  // Other
+  if (label.includes('배민') || label.includes('baemin')) return '/image/another/baeminclub.png'
+  if (label.includes('icloud')) return '/image/another/icloud.png'
+  if (label.includes('iemo')) return '/image/another/iemo.png'
+  if (label.includes('surrap')) return '/image/another/surrap.png'
+  if (label.includes('wow')) return '/image/another/wow.png'
+
+  return '/image/subees-logo.png'
+}
+
+const getCardBadgeLabel = (payment) => {
+  return (
+    payment.cardCompany ||
+    payment.cardIssuer ||
+    payment.cardBrand ||
+    '카드'
+  )
+}
+
+const getCardBadgeClass = (cardName = '') => {
+  const label = String(cardName).toLowerCase()
+
+  if (label.includes('toss')) return 'bg-[#156EF3] text-white'
+  if (label.includes('shinhan')) return 'bg-[#1A73E8] text-white'
+  if (label.includes('kb')) return 'bg-[#6B5B2A] text-white'
+  if (label.includes('hyundai')) return 'bg-[#111111] text-white'
+  if (label.includes('samsung')) return 'bg-[#1C4FD7] text-white'
+  if (label.includes('lotte')) return 'bg-[#E0002A] text-white'
+  if (label.includes('hana')) return 'bg-[#009178] text-white'
+  if (label.includes('woori')) return 'bg-[#0067AC] text-white'
+  if (label.includes('nh')) return 'bg-[#1D8F3A] text-white'
+
+  return 'bg-[#156EF3] text-white'
 }
 </script>
 
 <template>
-  <section class="shell-card p-6">
-    <div class="border-b border-[rgba(46,34,10,0.08)] pb-5">
-      <p class="text-sm font-semibold text-[#8A6A00]">선택 날짜 결제 정보</p>
-      <h2 class="mt-2 text-[26px] font-bold tracking-[-0.03em] text-neutral-900">{{ dateLabel }}</h2>
-      <p class="mt-2 text-sm text-neutral-500">총 {{ payments.length }}건 · {{ formatCurrency(totalAmount) }}</p>
+  <section class="shell-card p-5">
+    <p class="text-sm font-semibold text-[#8A6A00]">선택 날짜 결제 정보</p>
+
+    <h2 class="mt-3 text-[22px] font-black tracking-[-0.03em] text-neutral-900">
+      {{ dateLabel }}
+    </h2>
+
+    <p class="mt-2 text-sm text-neutral-500">
+      총 {{ payments.length }}건 · {{ formatCurrency(totalAmount) }}
+    </p>
+
+    <div class="mt-5 border-t border-[rgba(46,34,10,0.08)] pt-5">
+      <div v-if="payments.length" class="grid gap-3">
+        <article
+  v-for="payment in payments"
+  :key="payment.id"
+  class="rounded-[28px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.72)] p-4"
+>
+  <div class="flex items-start gap-3">
+    <div
+      class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(46,34,10,0.08)] bg-white"
+    >
+      <img
+        :src="getServiceImage(payment.name)"
+        :alt="payment.name"
+        class="h-8 w-8 rounded-full object-cover"
+      />
     </div>
 
-    <div v-if="payments.length" class="mt-5 grid gap-3">
-      <article v-for="payment in payments" :key="payment.paymentId" class="rounded-card border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.82)] p-4">
-        <div class="flex items-start gap-3">
-          <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white ring-1 ring-[rgba(46,34,10,0.08)]">
-            <AppAsset
-              type="service"
-              :value="payment.subscriptionName"
-              secondary-type="category"
-              :secondary-value="payment.categoryName"
-              fallback="calendar"
-              :size="18"
-              wrapper-class="inline-flex items-center justify-center"
-              image-class="h-7 w-7 object-contain"
-              icon-class="text-[#8A6A00]"
-            />
-          </div>
+    <div class="min-w-0 flex-1">
+      <div class="min-w-0">
+        <p class="text-[16px] font-black leading-[1.25] text-neutral-900 break-words">
+          {{ payment.name }}
+        </p>
 
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="truncate text-sm font-bold text-neutral-900">{{ payment.subscriptionName }}</p>
-              <span class="rounded-full px-2.5 py-1 text-[11px] font-bold ring-1" :class="categoryTone(payment.categoryName)">
-                {{ categoryDisplayName(payment.categoryName) }}
-              </span>
-            </div>
-            <div class="mt-1 inline-flex items-center gap-2 text-xs text-neutral-500">
-              <AppAsset
-                type="card"
-                :value="payment.paymentCardName"
-                fallback="creditcard"
-                :size="12"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-5 w-5 rounded-md bg-white p-0.5 ring-1 ring-[rgba(46,34,10,0.08)] object-contain"
-                icon-class="text-[#8A6A00]"
-                badge-class="inline-flex min-w-[36px] items-center justify-center rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[-0.02em]"
-              />
-              {{ payment.paymentCardName || '등록 카드' }}로 결제 예정
-            </div>
-            <div class="mt-4 flex items-center justify-between text-sm">
-              <span class="text-neutral-500">결제 금액</span>
-              <span class="font-bold text-neutral-900">{{ formatCurrency(payment.paymentAmount) }}</span>
-            </div>
-          </div>
+        <div class="mt-2 flex items-center gap-2">
+          <span
+            class="inline-flex shrink-0 items-center rounded-full px-2 py-1 text-[10px] font-black leading-none"
+            :class="getCardBadgeClass(getCardBadgeLabel(payment))"
+          >
+            {{ getCardBadgeLabel(payment) }}
+          </span>
+
+          <p class="min-w-0 flex-1 text-[12px] font-medium leading-[1.35] text-neutral-500 break-words">
+            {{ payment.cardLabel || '등록 카드로 결제 예정' }}
+          </p>
         </div>
-      </article>
-    </div>
+      </div>
 
-    <AppStatePanel
-      v-else
-      class="mt-5"
-      compact
-      title="선택한 날짜에 예정된 결제가 없습니다"
-      description="다른 날짜를 선택하면 해당 날짜의 결제 항목과 카드 정보를 이 영역에서 바로 확인할 수 있습니다."
-      icon="calendar"
-    />
+      <div class="mt-5 flex items-end justify-between gap-3">
+        <p class="text-[13px] font-semibold text-neutral-500">
+          결제 금액
+        </p>
+        <p class="text-[18px] font-black tracking-[-0.02em] text-neutral-900">
+          {{ formatCurrency(payment.amount) }}
+        </p>
+      </div>
+    </div>
+  </div>
+</article>
+      </div>
+
+      <div
+        v-else
+        class="rounded-[24px] border border-dashed border-[rgba(46,34,10,0.10)] bg-[rgba(255,253,247,0.55)] px-5 py-10 text-center"
+      >
+        <p class="text-sm font-semibold text-neutral-500">
+          선택한 날짜에 예정된 결제가 없습니다.
+        </p>
+      </div>
+    </div>
   </section>
 </template>
