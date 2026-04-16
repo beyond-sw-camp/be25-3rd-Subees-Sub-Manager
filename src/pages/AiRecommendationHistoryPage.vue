@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useAiRecommendationsStore } from '@/stores/aiRecommendations'
@@ -18,14 +18,27 @@ const filteredReports = computed(() => {
   })
 })
 
+onMounted(async () => {
+  try {
+    await aiStore.fetchSavedReports()
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
+})
+
 const openDetail = (reportId) => {
   aiStore.setActiveReport(reportId)
   router.push(`/ai-recommendations/${reportId}`)
 }
 
-const removeReport = (reportId) => {
+const removeReport = async (reportId) => {
   if (!window.confirm('선택한 추천 기록을 삭제할까요?')) return
-  aiStore.deleteReport(reportId)
+
+  try {
+    await aiStore.deleteReport(reportId)
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
 }
 </script>
 

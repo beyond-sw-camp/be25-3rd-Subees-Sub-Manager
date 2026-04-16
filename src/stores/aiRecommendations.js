@@ -1,8 +1,15 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import {
+  deleteRecommend,
+  getRecommendDetail,
+  getRecommendList,
+  postRecommendGenerate,
+  postRecommendSave,
+  postRecommendSubmit,
+} from '@/api/recommend'
 
 const DRAFT_KEY = 'subees-ai-recommend-draft-v4'
-const REPORTS_KEY = 'subees-ai-recommend-reports-v4'
 const ACTIVE_REPORT_KEY = 'subees-ai-recommend-active-v4'
 
 const CATEGORY_OPTIONS = ['AI', '생산성', '디자인', '클라우드', '기타']
@@ -59,91 +66,84 @@ const normalizeSubscriptionItems = (items = []) => items
     category: normalizeText(item.category) || '기타',
     monthlyPrice: toNumber(item.monthlyPrice),
     description: normalizeText(item.description),
-    sortOrder: index + 1,
+    sortOrder: toNumber(item.sortOrder) || index + 1,
   }))
   .filter((item) => item.serviceName)
 
 const totalPriceOf = (items = []) => items.reduce((sum, item) => sum + toNumber(item.monthlyPrice), 0)
 
-const buildGeneratedContent = (report) => {
-  const items = report.subscriptionItems || []
-  const totalPrice = totalPriceOf(items)
-  const mandatory = normalizeList(JSON.parse(report.mandatoryItemsJson || '[]'))
-  const optional = normalizeList(JSON.parse(report.optionalItemsJson || '[]'))
-  const sortedItems = [...items].sort((a, b) => toNumber(b.monthlyPrice) - toNumber(a.monthlyPrice))
-  const expensive = sortedItems.slice(0, 3)
-  const budgetGap = toNumber(report.maxMonthlyBudget) - totalPrice
-
-  const lines = [
-    '서비스 추천 요약',
-    '',
-    `총 예상 비용은 ${totalPrice.toLocaleString('ko-KR')}원입니다.`,
-    report.maxMonthlyBudget ? `설정한 예산은 ${toNumber(report.maxMonthlyBudget).toLocaleString('ko-KR')}원입니다.` : '설정한 예산은 없습니다.',
-    budgetGap >= 0
-      ? `예산 안에서 ${budgetGap.toLocaleString('ko-KR')}원 여유가 있습니다.`
-      : `예산을 ${Math.abs(budgetGap).toLocaleString('ko-KR')}원 초과했습니다.`,
-    '',
-    '현재 입력한 서비스',
-    items.length
-      ? items.map((item) => `- ${item.serviceName} | ${item.category} | ${toNumber(item.monthlyPrice).toLocaleString('ko-KR')}원`).join('\n')
-      : '- 입력한 서비스가 없습니다.',
-    '',
-    '추천 방향',
-    mandatory.length ? `- 필수 유지 항목: ${mandatory.join(', ')}` : '- 필수 유지 항목은 없습니다.',
-    optional.length ? `- 추가 희망 항목: ${optional.join(', ')}` : '- 추가 희망 항목은 없습니다.',
-    report.requestNote ? `- 요청 메모: ${report.requestNote}` : '- 요청 메모는 없습니다.',
-    '',
-    '우선 검토 서비스',
-    expensive.length
-      ? expensive.map((item) => `- ${item.serviceName}: ${toNumber(item.monthlyPrice).toLocaleString('ko-KR')}원 · ${item.description || '기능 설명 없음'}`).join('\n')
-      : '- 우선 검토 서비스가 없습니다.',
-  ]
-
-  return lines.join('\n')
+const parseItemsJson = (value) => {
+  try {
+    return normalizeList(JSON.parse(value || '[]'))
+  } catch {
+    return []
+  }
 }
 
-const buildReport = (payload = {}, reportStatus = 'SUBMITTED') => {
-  const subscriptionItems = normalizeSubscriptionItems(payload.subscriptionItems || [])
-  const createdAt = payload.createdAt || new Date().toISOString()
-  const report = {
-    reportId: payload.reportId || createId('report'),
-    reportTitle: normalizeText(payload.reportTitle) || `AI 추천 결과 ${toDateLabel(createdAt)}`,
-    requestNote: normalizeText(payload.requestNote),
-    generatedContent: normalizeText(payload.generatedContent),
-    totalMonthlyPrice: totalPriceOf(subscriptionItems),
-    maxMonthlyBudget: toNumber(payload.maxMonthlyBudget),
-    mandatoryItemsJson: JSON.stringify(normalizeList(payload.mandatoryItems || [])),
-    optionalItemsJson: JSON.stringify(normalizeList(payload.optionalItems || [])),
-    reportStatus,
-    createdAt,
-    updatedAt: new Date().toISOString(),
-    subscriptionItems,
-  }
+const normalizeReport = (payload = {}) => ({
+  reportId: payload.reportId ?? null,
+  reportTitle: normalizeText(payload.reportTitle),
+  requestNote: normalizeText(payload.requestNote),
+  generatedContent: normalizeText(payload.generatedContent),
+  totalMonthlyPrice: toNumber(payload.totalMonthlyPrice),
+  maxMonthlyBudget: toNumber(payload.maxMonthlyBudget),
+  mandatoryItemsJson: typeof payload.mandatoryItemsJson === 'string' ? payload.mandatoryItemsJson : JSON.stringify(normalizeList(payload.mandatoryItems || [])),
+  optionalItemsJson: typeof payload.optionalItemsJson === 'string' ? payload.optionalItemsJson : JSON.stringify(normalizeList(payload.optionalItems || [])),
+  reportStatus: normalizeText(payload.reportStatus) || 'SUBMITTED',
+  createdAt: payload.createdAt || new Date().toISOString(),
+  updatedAt: payload.updatedAt || payload.createdAt || new Date().toISOString(),
+  subscriptionItems: normalizeSubscriptionItems(payload.subscriptionItems || []),
+})
 
-  if (reportStatus !== 'SUBMITTED' && !report.generatedContent) {
-    report.generatedContent = buildGeneratedContent(report)
-  }
+const toSubmitPayload = (draft = {}) => ({
+  reportTitle: normalizeText(draft.reportTitle),
+  requestNote: normalizeText(draft.requestNote),
+  maxMonthlyBudget: toNumber(draft.maxMonthlyBudget),
+  mandatoryItems: normalizeList(draft.mandatoryItems),
+  optionalItems: normalizeList(draft.optionalItems),
+  subscriptionItems: normalizeSubscriptionItems(draft.subscriptionItems).map((item) => ({
+    serviceName: item.serviceName,
+    category: item.category,
+    monthlyPrice: item.monthlyPrice,
+    description: item.description,
+  })),
+})
 
-  return report
-}
+const getErrorMessage = (error, fallback) => error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback
 
 export const useAiRecommendationsStore = defineStore('aiRecommendations', () => {
   const draft = ref({ ...clone(DEFAULT_DRAFT), ...loadJson(DRAFT_KEY, {}) })
-  const reports = ref(loadJson(REPORTS_KEY, []))
+  const reports = ref([])
   const activeReportId = ref(loadJson(ACTIVE_REPORT_KEY, null))
   const statusMessage = ref('')
+  const errorMessage = ref('')
+  const isFetchingList = ref(false)
+  const isFetchingDetail = ref(false)
+  const isSubmitting = ref(false)
 
   const reportList = computed(() => [...reports.value].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)))
-  const currentReport = computed(() => reportList.value.find((item) => item.reportId === activeReportId.value) || null)
+  const currentReport = computed(() => reportList.value.find((item) => String(item.reportId) === String(activeReportId.value)) || null)
   const generatedReports = computed(() => reportList.value.filter((item) => item.reportStatus === 'GENERATED'))
   const savedReports = computed(() => reportList.value.filter((item) => item.reportStatus === 'SAVED'))
   const draftTotalPrice = computed(() => totalPriceOf(draft.value.subscriptionItems || []))
 
   const persistDraft = () => saveJson(DRAFT_KEY, draft.value)
-  const persistReports = () => saveJson(REPORTS_KEY, reports.value)
   const persistActive = () => saveJson(ACTIVE_REPORT_KEY, activeReportId.value)
 
-  const setStatusMessage = (message = '') => { statusMessage.value = message }
+  const clearMessages = () => {
+    statusMessage.value = ''
+    errorMessage.value = ''
+  }
+
+  const setStatusMessage = (message = '') => {
+    statusMessage.value = message
+    errorMessage.value = ''
+  }
+
+  const setErrorMessage = (message = '') => {
+    errorMessage.value = message
+    statusMessage.value = ''
+  }
 
   const updateDraft = (payload = {}) => {
     draft.value = {
@@ -167,73 +167,13 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     setStatusMessage('입력 중인 추천 조건을 초기화했습니다.')
   }
 
-  const submitDraft = () => {
-    const report = buildReport(draft.value, 'SUBMITTED')
-    reports.value = [report, ...reports.value.filter((item) => item.reportId !== report.reportId)]
-    activeReportId.value = report.reportId
-    persistReports()
-    persistActive()
-    setStatusMessage('추천 요청을 저장했습니다.')
-    return report
-  }
-
-  const generateRecommendations = (reportId = activeReportId.value) => {
-    const target = reports.value.find((item) => item.reportId === reportId)
-    if (!target) return null
-
-    const next = {
-      ...target,
-      reportStatus: 'GENERATED',
-      generatedContent: buildGeneratedContent(target),
-      updatedAt: new Date().toISOString(),
-    }
-
-    reports.value = reports.value.map((item) => item.reportId === next.reportId ? next : item)
-    activeReportId.value = next.reportId
-    persistReports()
-    persistActive()
-    setStatusMessage('추천 결과를 생성했습니다.')
-    return next
-  }
-
-  const saveReport = (reportId = activeReportId.value, overrides = {}) => {
-    const target = reports.value.find((item) => item.reportId === reportId)
-    if (!target) return null
-
-    const next = {
-      ...target,
-      reportTitle: normalizeText(overrides.reportTitle || target.reportTitle) || target.reportTitle,
-      generatedContent: normalizeText(overrides.generatedContent || target.generatedContent) || buildGeneratedContent(target),
-      reportStatus: 'SAVED',
-      updatedAt: new Date().toISOString(),
-    }
-
-    reports.value = reports.value.map((item) => item.reportId === next.reportId ? next : item)
-    activeReportId.value = next.reportId
-    persistReports()
-    persistActive()
-    setStatusMessage('추천 결과를 저장했습니다.')
-    return next
-  }
-
-  const updateReportTitle = (reportId, reportTitle) => {
-    reports.value = reports.value.map((item) => (
-      item.reportId === reportId
-        ? { ...item, reportTitle: normalizeText(reportTitle) || item.reportTitle, updatedAt: new Date().toISOString() }
-        : item
-    ))
-    persistReports()
-    setStatusMessage('추천 제목을 수정했습니다.')
-  }
-
-  const deleteReport = (reportId) => {
-    reports.value = reports.value.filter((item) => item.reportId !== reportId)
-    if (activeReportId.value === reportId) {
-      activeReportId.value = reports.value[0]?.reportId || null
-      persistActive()
-    }
-    persistReports()
-    setStatusMessage('추천 결과를 삭제했습니다.')
+  const upsertReport = (payload = {}) => {
+    const normalized = normalizeReport(payload)
+    reports.value = [
+      normalized,
+      ...reports.value.filter((item) => String(item.reportId) !== String(normalized.reportId)),
+    ]
+    return normalized
   }
 
   const setActiveReport = (reportId) => {
@@ -241,12 +181,158 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     persistActive()
   }
 
-  const getReportById = (reportId) => reports.value.find((item) => item.reportId === reportId) || null
-  const parseItemsJson = (value) => {
+  const getReportById = (reportId) => reports.value.find((item) => String(item.reportId) === String(reportId)) || null
+
+  const fetchReportDetail = async (reportId) => {
+    if (!reportId) return null
+
+    isFetchingDetail.value = true
     try {
-      return normalizeList(JSON.parse(value || '[]'))
-    } catch {
-      return []
+      const response = await getRecommendDetail(reportId)
+      const data = response?.data?.data ?? {}
+      const report = upsertReport(data)
+      setActiveReport(report.reportId)
+      return report
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 상세 정보를 불러오지 못했습니다.'))
+      throw error
+    } finally {
+      isFetchingDetail.value = false
+    }
+  }
+
+  const ensureReportDetail = async (reportId) => {
+    const cached = getReportById(reportId)
+    if (cached?.subscriptionItems?.length || cached?.generatedContent) {
+      setActiveReport(reportId)
+      return cached
+    }
+    return fetchReportDetail(reportId)
+  }
+
+  const fetchSavedReports = async () => {
+    isFetchingList.value = true
+    clearMessages()
+
+    try {
+      const response = await getRecommendList()
+      const items = response?.data?.data?.reports ?? []
+
+      if (!items.length) {
+        reports.value = reports.value.filter((item) => item.reportStatus !== 'SAVED')
+        return []
+      }
+
+      const details = await Promise.all(items.map(async (item) => {
+        try {
+          const detailResponse = await getRecommendDetail(item.reportId)
+          return normalizeReport(detailResponse?.data?.data ?? item)
+        } catch {
+          return normalizeReport(item)
+        }
+      }))
+
+      const nonSaved = reports.value.filter((item) => item.reportStatus !== 'SAVED')
+      reports.value = [...details, ...nonSaved.filter((item) => !details.some((detail) => String(detail.reportId) === String(item.reportId)))]
+      return details
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 기록 목록을 불러오지 못했습니다.'))
+      throw error
+    } finally {
+      isFetchingList.value = false
+    }
+  }
+
+  const submitDraft = async () => {
+    isSubmitting.value = true
+    clearMessages()
+
+    try {
+      const payload = toSubmitPayload(draft.value)
+      const response = await postRecommendSubmit(payload)
+      const reportId = response?.data?.data?.reportId
+      const report = await fetchReportDetail(reportId)
+      setStatusMessage('추천 요청을 저장했습니다.')
+      return report
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 요청 저장에 실패했습니다.'))
+      throw error
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  const generateRecommendations = async (reportId = activeReportId.value) => {
+    if (!reportId) return null
+
+    isSubmitting.value = true
+    clearMessages()
+
+    try {
+      await postRecommendGenerate({ reportId: toNumber(reportId) })
+      const report = await fetchReportDetail(reportId)
+      setStatusMessage('추천 결과를 생성했습니다.')
+      return report
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 결과 생성에 실패했습니다.'))
+      throw error
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  const saveReport = async (reportId = activeReportId.value, overrides = {}) => {
+    if (!reportId) return null
+
+    isSubmitting.value = true
+    clearMessages()
+
+    try {
+      const target = await ensureReportDetail(reportId)
+      await postRecommendSave({
+        reportId: toNumber(reportId),
+        reportTitle: normalizeText(overrides.reportTitle || target?.reportTitle),
+        generatedContent: normalizeText(overrides.generatedContent || target?.generatedContent),
+      })
+      const report = await fetchReportDetail(reportId)
+      setStatusMessage('추천 결과를 저장했습니다.')
+      return report
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 결과 저장에 실패했습니다.'))
+      throw error
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  const updateReportTitle = async (reportId, reportTitle) => {
+    const target = await ensureReportDetail(reportId)
+    return saveReport(reportId, {
+      reportTitle,
+      generatedContent: target?.generatedContent,
+    })
+  }
+
+  const deleteReportById = async (reportId) => {
+    if (!reportId) return false
+
+    isSubmitting.value = true
+    clearMessages()
+
+    try {
+      await deleteRecommend(reportId)
+      reports.value = reports.value.filter((item) => String(item.reportId) !== String(reportId))
+      if (String(activeReportId.value) === String(reportId)) {
+        activeReportId.value = reports.value[0]?.reportId || null
+        persistActive()
+      }
+      setStatusMessage('추천 결과를 삭제했습니다.')
+      return true
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '추천 결과 삭제에 실패했습니다.'))
+      throw error
+    } finally {
+      isSubmitting.value = false
     }
   }
 
@@ -255,6 +341,10 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     reports,
     activeReportId,
     statusMessage,
+    errorMessage,
+    isFetchingList,
+    isFetchingDetail,
+    isSubmitting,
     CATEGORY_OPTIONS,
     SERVICE_LIBRARY,
     reportList,
@@ -262,14 +352,19 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     generatedReports,
     savedReports,
     draftTotalPrice,
+    clearMessages,
     setStatusMessage,
+    setErrorMessage,
     updateDraft,
     resetDraft,
     submitDraft,
     generateRecommendations,
     saveReport,
     updateReportTitle,
-    deleteReport,
+    deleteReport: deleteReportById,
+    fetchSavedReports,
+    fetchReportDetail,
+    ensureReportDetail,
     setActiveReport,
     getReportById,
     parseItemsJson,
