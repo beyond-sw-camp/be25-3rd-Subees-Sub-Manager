@@ -1,6 +1,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
+//api 함수를 import해서 사용
 import { getCommunityPosts, getCommunityPostDetail, createCommunityPost, updateCommunityPost, deleteCommunityPost } from '@/api/community'
 
 const SCRAP_STORAGE_KEY = 'subees-community-scraps'
@@ -77,11 +78,11 @@ export const useCommunityStore = defineStore('community', () => {
   }
 
   const fetchPostDetail = async (postId) => {
-    isLoading.value = true
+    isLoading.value = true // 로딩 시작
     try {
-      const response = await getCommunityPostDetail(postId)
-      const data = response.data.data
-      currentPost.value = {
+      const response = await getCommunityPostDetail(postId) // api 호출
+      const data = response.data.data // 백 응답 
+      currentPost.value = { // 상태에 저장
         postId: data.postId,
         title: data.title,
         content: data.content,
@@ -91,9 +92,9 @@ export const useCommunityStore = defineStore('community', () => {
         scrapCount: data.scrapCount,
         createdAt: data.createdAt,
         updatedAt: data.createdAt,
-        tags: [],
+        // tags: [],
         isScrapped: scrappedPostIds.value.includes(data.postId),
-        isMine: Boolean(authStore.userId && authStore.userId === data.userId),
+        // isMine: Boolean(authStore.userId && authStore.userId === data.userId),
         createdAtLabel: formatDateTime(data.createdAt),
         updatedAtLabel: formatDateTime(data.createdAt),
       }
