@@ -36,7 +36,7 @@ export const useCommunityStore = defineStore('community', () => {
   const isLoading = ref(false)
   const pagination = reactive({
     page: 1,
-    totalPages: 1,
+    totalPages: 0, // 0 > 0 = false → 스킵 → API 호출해서 페이지 불러옴. 1로 설정시 페이지 예외 뜸
     totalCount: 0,
   })
   const scrappedPostIds = ref(loadJson(SCRAP_STORAGE_KEY, []))
@@ -48,10 +48,21 @@ export const useCommunityStore = defineStore('community', () => {
   const successMessage = ref('')
   const errorMessage = ref('')
 
+  const PAGE_SIZE = 10 // 한 페이지당 10개의 글
+
   const fetchPosts = async (page = 1) => {
+    // 페이지 범위 사전 검증 (pagination.totalPages가 이미 설정된 경우)
+    if (pagination.totalPages > 0 && (page < 1 || page > pagination.totalPages)) {
+      // setError(`유효하지 않은 페이지입니다. (1 ~ ${pagination.totalPages}페이지)`)
+      setError(`유효하지 않은 페이지입니다.`)
+
+      return
+    }
+
     isLoading.value = true
+    errorMessage.value = ''
     try {
-      const response = await getCommunityPosts({ page })
+      const response = await getCommunityPosts({ page, size: PAGE_SIZE })
       const data = response.data.data
       posts.value = data.posts.map((post) => ({
         postId: post.postId,
@@ -66,12 +77,26 @@ export const useCommunityStore = defineStore('community', () => {
         content: '',
         tags: [],
       }))
-      pagination.page = data.page
+      // 백 응답에서 size/page 필드 가져옴
+      // data.size 실제 현재 페이지 번호, data.page  실제 페이지 크기
+      pagination.page = data.size
       pagination.totalPages = data.totalPages
       pagination.totalCount = data.totalCount
       selectedPostId.value = posts.value[0]?.postId ?? null
     } catch (error) {
-      setError('게시글 목록을 불러오지 못했습니다.')
+      // 백엔드 에러 응답 형식 { code, status, message }
+      const serverMessage = error.response?.data?.message
+      const statusCode = error.response?.status
+      if (serverMessage) {
+        // 400 INVALID_PAGE / 500 INTERNAL_SERVER_ERROR 등 서버 메시지 그대로 표시
+        setError(serverMessage)
+      } else if (!error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크를 확인해주세요.')
+      } else if (statusCode === 500) {
+        setError('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      } else {
+        setError('게시글 목록을 불러오지 못했습니다.')
+      }
     } finally {
       isLoading.value = false
     }
