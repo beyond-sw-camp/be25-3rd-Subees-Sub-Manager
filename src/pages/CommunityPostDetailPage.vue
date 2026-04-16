@@ -32,15 +32,15 @@ const handleToggleScrap = () => {
   communityStore.toggleScrap(postId.value)
 }
 
-const copyLink = async () => {
-  const shareUrl = `${window.location.origin}/community/${postId.value}`
-  try {
-    await navigator.clipboard.writeText(shareUrl)
-    communityStore.setSuccess('공유 링크가 복사되었습니다.')
-  } catch (error) {
-    communityStore.setError('링크 복사에 실패했습니다.')
-  }
-}
+// const copyLink = async () => {
+//   const shareUrl = `${window.location.origin}/community/${postId.value}`
+//   try {
+//     await navigator.clipboard.writeText(shareUrl)
+//     communityStore.setSuccess('공유 링크가 복사되었습니다.')
+//   } catch (error) {
+//     communityStore.setError('링크 복사에 실패했습니다.')
+//   }
+// }
 </script>
 
 <template>
@@ -141,7 +141,7 @@ const copyLink = async () => {
 
     <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 px-4">
       <div class="w-full max-w-md rounded-modal bg-white p-6 shadow-floating">
-        <p class="text-sm font-semibold text-danger">게시글 삭제</p>
+        <!-- <p class="text-sm font-semibold text-danger">게시글 삭제</p> -->
         <h3 class="mt-2 text-xl font-bold tracking-[-0.02em] text-neutral-900">정말로 이 게시글을 삭제하시겠습니까?</h3>
         <p class="mt-3 text-sm leading-6 text-neutral-500">삭제 후에는 복구할 수 없으며, 스크랩 목록에서도 함께 제거됩니다.</p>
         <div class="mt-6 flex justify-end gap-3">
