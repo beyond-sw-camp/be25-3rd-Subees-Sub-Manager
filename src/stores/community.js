@@ -147,7 +147,7 @@ export const useCommunityStore = defineStore('community', () => {
     return posts.value.map((post) => ({
       ...post,
       isScrapped: scrappedPostIds.value.includes(post.postId),
-      isMine: Boolean(authStore.userId && authStore.userId === post.authorId),
+      isMine: Boolean(authStore.nickname && authStore.nickname === post.authorNickname), //내 게시글 표시
       createdAtLabel: formatDateTime(post.createdAt),
       updatedAtLabel: formatDateTime(post.updatedAt),
       preview: post.content.split('\n').filter(Boolean).slice(0, 2).join(' '),

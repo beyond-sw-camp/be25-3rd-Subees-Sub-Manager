@@ -75,7 +75,8 @@ const goToPage = (page) => {
 
       <section class="grid gap-4">
         <div class="grid gap-3.5">
-          <CommunityPostCard v-for="item in filteredPosts" :key="item.postId" :item="item" />
+          <!-- 글 목록 반환 -->
+          <CommunityPostCard v-for="item in filteredPosts" :key="item.postId" :item="item" /> 
 
           <AppStatePanel
             v-if="!filteredPosts.length && !isLoading"
