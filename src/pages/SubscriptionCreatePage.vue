@@ -7,90 +7,54 @@ import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionFormStore } from '@/stores/subscriptionForm'
 import { usePaymentCardsStore } from '@/stores/paymentCards'
 import { categoryImage, serviceImage } from '@/utils/imageAssets'
+import { createSubscription } from '@/api/subscription'
 import AppAsset from '@/components/ui/AppAsset.vue'
+import { onMounted } from 'vue'
+import { getSubscriptionCategory } from '@/api/subscription'
+import { getSubscriptionItemByCategory } from '@/api/subscription'
+import { getPaymentCard } from '@/api/subscription'
+
 
 const authStore = useAuthStore()
 const router = useRouter()
 const subscriptionFormStore = useSubscriptionFormStore()
 const paymentCardsStore = usePaymentCardsStore()
-const { currentStep, subscriptionForm, resolvedSubscriptionName, requestPayload } = storeToRefs(subscriptionFormStore)
-const { cardOptions } = storeToRefs(paymentCardsStore)
-
+const { currentStep, subscriptionForm, resolvedSubscriptionName } = storeToRefs(subscriptionFormStore)
 const showCardPicker = ref(false)
-
 const steps = [1, 2, 3, 4]
+const categories = ref([])
+const services = ref([])
+const cardOptions = ref([])
 
-const categoryCatalog = [
-  {
-    categoryName: 'OTT',
-    label: 'OTT',
-    description: '영상 스트리밍 서비스',
-    preview: 'N',
-    image: categoryImage('OTT'),
-    services: [
-      { subscriptionName: '넷플릭스', paymentAmount: 17000, image: serviceImage('넷플릭스') },
-      { subscriptionName: '티빙', paymentAmount: 13900, image: serviceImage('티빙') },
-      { subscriptionName: '디즈니+', paymentAmount: 9900, image: serviceImage('디즈니+') },
-      { subscriptionName: '웨이브', paymentAmount: 10900, image: serviceImage('웨이브') },
-    ],
-  },
-  {
-    categoryName: 'Music',
-    label: '음악',
-    description: '음악 스트리밍 서비스',
-    preview: 'M',
-    image: categoryImage('Music'),
-    services: [
-      { subscriptionName: 'Spotify', paymentAmount: 10900, image: serviceImage('Spotify') },
-      { subscriptionName: '멜론', paymentAmount: 10900, image: serviceImage('멜론') },
-      { subscriptionName: 'Apple Music', paymentAmount: 11900, image: serviceImage('Apple Music') },
-      { subscriptionName: '지니', paymentAmount: 8400, image: serviceImage('지니') },
-    ],
-  },
-  {
-    categoryName: 'AI',
-    label: 'AI',
-    description: '생산성·LLM 기반 서비스',
-    preview: 'A',
-    image: categoryImage('AI'),
-    services: [
-      { subscriptionName: 'ChatGPT', paymentAmount: 29000, image: serviceImage('ChatGPT') },
-      { subscriptionName: 'Gemini', paymentAmount: 29000, image: serviceImage('Gemini') },
-      { subscriptionName: 'Claude', paymentAmount: 29000, image: serviceImage('Claude') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-  {
-    categoryName: 'Cloud',
-    label: '클라우드',
-    description: '클라우드·협업 서비스',
-    preview: 'C',
-    image: categoryImage('Cloud'),
-    services: [
-      { subscriptionName: '카카오 톡서랍', paymentAmount: 3900, image: serviceImage('카카오 톡서랍') },
-      { subscriptionName: 'iCloud+', paymentAmount: 4400, image: serviceImage('iCloud+') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-  {
-    categoryName: 'Etc',
-    label: '그 외',
-    description: '멤버십·생활형 서비스',
-    preview: 'E',
-    image: categoryImage('Etc'),
-    services: [
-      { subscriptionName: '쿠팡와우', paymentAmount: 7890, image: serviceImage('쿠팡와우') },
-      { subscriptionName: '배민클럽', paymentAmount: 3990, image: serviceImage('배민클럽') },
-      { subscriptionName: '이모티콘 플러스', paymentAmount: 4900, image: serviceImage('이모티콘 플러스') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-]
+const requestPayload = computed(() => ({
+  categoryId: subscriptionForm.value.categoryId,
+  itemId: subscriptionForm.value.itemId,
+  itemName:
+    subscriptionForm.value.itemId === null
+      ? subscriptionForm.value.customSubscriptionName
+      : null,
+  paymentId: subscriptionForm.value.paymentCardId,
+  price: Number(subscriptionForm.value.paymentAmount),
+  billingCycle: subscriptionForm.value.billingCycle,
+  startDate: subscriptionForm.value.paymentStartDate,
+}))
+
+onMounted(async () => {
+  // 카테고리 조회
+  const categoryRes = await getSubscriptionCategory()
+  categories.value = categoryRes.data.data
+
+  // 카드 조회
+  const cardRes = await getPaymentCard()
+  cardOptions.value = cardRes.data.data
+})
 
 const billingCycles = [
-  { label: '매월 결제', value: 'MONTHLY' },
-  { label: '매년 결제', value: 'YEARLY' },
+  { label: '매월 결제', value: '1M' },
+  { label: '매년 결제', value: '1Y' },
 ]
+
+
 
 const progressPercent = computed(() => `${(currentStep.value / 4) * 100}%`)
 
@@ -109,26 +73,37 @@ const stepGuide = computed(() => {
 })
 
 const selectedCategory = computed(() => {
-  return categoryCatalog.find((item) => item.categoryName === subscriptionForm.value.categoryName) ?? categoryCatalog[0]
+  return categories.value.find(
+    (item) => item.categoryId === subscriptionForm.value.categoryId
+  ) || {}
 })
 
-const selectedCategoryLabel = computed(() => selectedCategory.value.label)
-const customServiceMode = computed(() => subscriptionForm.value.subscriptionName === '직접 입력')
-const selectedServiceLabel = computed(() => resolvedSubscriptionName.value || '직접 입력 서비스')
+const selectedCategoryLabel = computed(() => selectedCategory.value.categoryName || '')
+const customServiceMode = computed(() => {
+  return subscriptionForm.value.itemId === null
+})
+const selectedServiceLabel = computed(() => {
+  if (subscriptionForm.value.itemId === null) {
+    return subscriptionForm.value.customSubscriptionName || '직접 입력 서비스'
+  }
+
+  const found = services.value.find(
+    (item) => item.itemId === subscriptionForm.value.itemId
+  )
+  return found?.itemName || ''
+})
 const serviceInitial = computed(() => selectedServiceLabel.value.trim().slice(0, 1).toUpperCase() || '?')
 
-const serviceOptions = computed(() => {
-  const base = selectedCategory.value.services
-  return base.some((service) => service.subscriptionName === '직접 입력')
-    ? base
-    : [...base, { subscriptionName: '직접 입력', paymentAmount: 0 }]
-})
+const serviceOptions = computed(() => [
+  ...services.value,
+  { itemId: null, itemName: '직접 입력' }
+])
 
 const isStepValid = computed(() => {
-  if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryName)
+  if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryId)
   if (currentStep.value === 2) {
     if (customServiceMode.value) return subscriptionForm.value.customSubscriptionName.trim().length > 0
-    return Boolean(subscriptionForm.value.subscriptionName)
+    return Boolean(subscriptionForm.value.itemId)
   }
   if (currentStep.value === 3) {
     return Boolean(
@@ -144,18 +119,26 @@ const isStepValid = computed(() => {
 
 const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
-const selectCategory = (category) => {
-  const defaultService = category.services[0]?.subscriptionName ?? '직접 입력'
-  const defaultAmount = category.services[0]?.paymentAmount ?? 0
-  subscriptionFormStore.setCategory(category.categoryName, defaultService, defaultAmount)
-}
+const selectCategory = async (category) => {
+  subscriptionFormStore.setCategory(category.categoryId)
 
+  const res = await getSubscriptionItemByCategory(category.categoryId)
+  services.value = res.data.data
+}
 const selectService = (service) => {
-  subscriptionFormStore.setSubscription(service.subscriptionName, service.paymentAmount)
+  if (service.itemId === null) {
+    subscriptionFormStore.setSubscription(null, '', 0)
+  } else {
+    subscriptionFormStore.setSubscription(
+      service.itemId,
+      service.itemName,
+      service.price
+    )
+  }
 }
 
 const pickCard = (card) => {
-  subscriptionFormStore.setPaymentCardName(card)
+  subscriptionFormStore.setPaymentCardId(card.paymentId)
   showCardPicker.value = false
 }
 
@@ -173,26 +156,23 @@ const goNext = () => {
   subscriptionFormStore.nextStep()
 }
 
-const submitDraft = () => {
-  window.alert('구독이 등록되었습니다.')
-  router.push('/subscriptions')
+const submitDraft = async () => {
+  try {
+    console.log('보낼 payload:', requestPayload.value)
+
+    const response = await createSubscription(requestPayload.value)
+
+    console.log('등록 성공:', response.data)
+    window.alert('구독이 등록되었습니다.')
+    router.push('/subscriptions')
+  } catch (error) {
+    console.error('등록 실패:', error)
+    console.error('응답 데이터:', error.response?.data)
+    window.alert(error.response?.data?.message || '구독 등록에 실패했습니다.')
+  }
 }
 
-watch(
-  () => subscriptionForm.value.categoryName,
-  (nextCategory) => {
-    const matchedCategory = categoryCatalog.find((item) => item.categoryName === nextCategory)
-    if (!matchedCategory) return
 
-    const availableServices = matchedCategory.services.map((item) => item.subscriptionName)
-    if (!availableServices.includes(subscriptionForm.value.subscriptionName)) {
-      const fallback = matchedCategory.services[0]
-      if (fallback) {
-        subscriptionFormStore.setSubscription(fallback.subscriptionName, fallback.paymentAmount)
-      }
-    }
-  },
-)
 </script>
 
 <template>
@@ -234,59 +214,66 @@ watch(
 
           <div class="wizard__tile-grid">
             <button
-              v-for="category in categoryCatalog"
-              :key="category.categoryName"
+              v-for="category in categories"
+              :key="category.categoryId"
               type="button"
               class="wizard__tile"
-              :class="{ 'wizard__tile--active': subscriptionForm.categoryName === category.categoryName }"
+              :class="{ 'wizard__tile--active': subscriptionForm.categoryId === category.categoryId }"
               @click="selectCategory(category)"
-            >
-              <div v-if="subscriptionForm.categoryName === category.categoryName" class="wizard__tile-check">선택됨</div>
+              >
+              <div v-if="subscriptionForm.categoryId === category.categoryId" class="wizard__tile-check">선택됨</div>
+
               <div class="wizard__tile-image">
                 <AppAsset
-                type="category"
-                :value="category.label"
-                fallback="grid"
-                :size="18"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-24 w-24 object-contain lg:h-28 lg:w-28 xl:h-32 xl:w-32"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="category"
+                  :value="category.categoryName"
+                  fallback="grid"
+                  :size="18"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-24 w-24 object-contain lg:h-28 lg:w-28 xl:h-32 xl:w-32"
+                  icon-class="text-[#8A6A00]"
+                />
               </div>
-              <div class="wizard__tile-title">{{ category.label }}</div>
-              <div class="text-sm text-neutral-500">{{ category.description }}</div>
+
+<div class="wizard__tile-title">{{ category.categoryName }}</div>
+<div class="text-sm text-neutral-500">{{ category.description }}</div>
             </button>
           </div>
         </div>
 
         <div v-else-if="currentStep === 2" class="wizard__block">
           <div class="wizard__selection">
-            <div class="wizard__selection-label">현재 선택한 서비스</div>
-            <div class="wizard__selection-value">{{ selectedServiceLabel }}</div>
-            <div class="text-sm text-neutral-500">로고가 있는 서비스는 아이콘 이미지를 함께 보여주고, 직접 입력 항목만 fallback으로 처리합니다.</div>
+          <div class="wizard__selection-label">현재 선택한 종류</div>
+          <div class="wizard__selection-value">
+            {{ selectedCategoryLabel || '카테고리를 선택해주세요.' }}
           </div>
+          <div class="text-sm text-neutral-500">
+            선택한 카테고리는 다음 단계 서비스 목록에 바로 반영돼요.
+          </div>
+        </div>
 
           <div class="wizard__chip-grid">
             <button
               v-for="service in serviceOptions"
-              :key="service.subscriptionName"
+              :key="service.itemId"
               type="button"
               class="wizard__service-chip"
-              :class="{ 'wizard__service-chip--active': subscriptionForm.subscriptionName === service.subscriptionName }"
+              :class="{ 'wizard__service-chip--active': subscriptionForm.itemId === service.itemId }"
               @click="selectService(service)"
             >
               <span class="wizard__service-chip-icon">
                 <AppAsset
-                type="service"
-                :value="service.subscriptionName"
-                fallback="sparkles"
-                :size="16"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-11 w-11 object-contain"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="service"
+                  :value="service.itemName"
+                  fallback="sparkles"
+                  :size="16"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-11 w-11 object-contain"
+                  icon-class="text-[#8A6A00]"
+                />
               </span>
-              <span>{{ service.subscriptionName === '직접 입력' ? '직접입력' : service.subscriptionName }}</span>
+
+              <span>{{ service.itemName }}</span>
             </button>
           </div>
 
@@ -575,9 +562,10 @@ watch(
 }
 
 .wizard__tile--active {
-  border-color: rgba(242, 210, 33, 0.34);
-  background: rgba(242, 210, 33, 0.12);
-  box-shadow: 0 0 0 3px rgba(242, 210, 33, 0.1);
+  border: 2px solid #f2d221;
+  background: rgba(242, 210, 33, 0.18);
+  box-shadow: 0 10px 24px rgba(242, 210, 33, 0.22);
+  transform: translateY(-2px);
 }
 
 .wizard__tile-check {
