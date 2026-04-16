@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -11,34 +12,113 @@ const router = useRouter()
 const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
 
-const monthLabel = computed(() => dashboardStore.userSummary.billingWindowLabel || '이번 달')
-const dueSoon = computed(() => dashboardStore.upcomingSubscriptions.slice(0, 4))
-const hasSubscriptions = computed(() => dashboardStore.userSummary.activeSubscriptionCount > 0)
-const topCategory = computed(() => dashboardStore.highestCategory)
+const {
+  isLoading,
+  errorMessage,
+  userSummary,
+  nextPayment,
+  upcomingSubscriptions,
+  categorySpendSummary,
+  monthlySpendTrend,
+  highestCategory,
+  averageMonthlySpend,
+} = storeToRefs(dashboardStore)
+
+const monthLabel = computed(() => userSummary.value.billingWindowLabel || '이번 달')
+const dueSoon = computed(() => upcomingSubscriptions.value.slice(0, 4))
+const hasSubscriptions = computed(() => userSummary.value.activeSubscriptionCount > 0)
+const topCategory = computed(() => highestCategory.value)
 
 const overviewCards = computed(() => ([
-  { label: '이번 달 결제', value: formatCurrency(dashboardStore.userSummary.monthlyExpectedAmount), caption: '예상 총액' },
-  { label: '다음 결제', value: dashboardStore.userSummary.nextPaymentDate, caption: dashboardStore.nextPayment.subscriptionName },
-  { label: '활성 구독', value: `${dashboardStore.userSummary.activeSubscriptionCount}개`, caption: '정기 결제 기준' },
-  { label: '절감 가능', value: formatCurrency(dashboardStore.userSummary.potentialSavingsAmount), caption: '중복·미사용 추정' },
+  {
+    label: '이번 달 결제',
+    value: formatCurrency(userSummary.value.monthlyExpectedAmount),
+    caption: '예상 총액',
+  },
+  {
+    label: '다음 결제',
+    value: userSummary.value.nextPaymentDate || '-',
+    caption: nextPayment.value.subscriptionName || '예정된 결제 없음',
+  },
+  {
+    label: '활성 구독',
+    value: `${userSummary.value.activeSubscriptionCount}개`,
+    caption: '정기 결제 기준',
+  },
+  {
+    label: '절감 가능',
+    value: formatCurrency(userSummary.value.potentialSavingsAmount),
+    caption: userSummary.value.potentialSavingsAmount > 0 ? '중복 구독 추정' : '중복 구독 없음',
+  },
 ]))
 
 const monthlyTrend = computed(() => {
-  const max = Math.max(...dashboardStore.monthlySpendTrend.map((item) => item.totalAmount), 1)
-  return dashboardStore.monthlySpendTrend.map((item) => ({
+  const max = Math.max(...monthlySpendTrend.value.map((item) => Number(item.totalAmount || 0)), 1)
+
+  return monthlySpendTrend.value.map((item) => ({
     ...item,
-    height: Math.max(18, Math.round((item.totalAmount / max) * 88)),
+    height: Math.max(18, Math.round((Number(item.totalAmount || 0) / max) * 88)),
   }))
+})
+
+const summaryDescription = computed(() => {
+  if (!nextPayment.value.subscriptionName || !hasSubscriptions.value) {
+    return '이번 달 결제 총액과 가까운 결제 일정을 먼저 확인하세요.'
+  }
+
+  return `${nextPayment.value.subscriptionName} 결제가 가장 가깝고, ${userSummary.value.activeSubscriptionCount}개의 구독이 활성 상태입니다.`
 })
 
 const go = (path) => router.push(path)
 const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
+
+const handleRetry = async () => {
+  try {
+    await dashboardStore.fetchDashboard({ force: true })
+  } catch (error) {
+    // 스토어 상태로 에러 패널 유지
+  }
+}
+const formatDday = (value) => {
+  if (value == null) return '-'
+  if (value === 0) return 'D-DAY'
+  if (value < 0) return `D+${Math.abs(value)}`
+  return `D-${value}`
+}
+
+onMounted(async () => {
+  try {
+    await dashboardStore.fetchDashboard({ force: true })
+  } catch (error) {
+    // 스토어 상태로 에러 패널 노출
+  }
+})
 </script>
 
 <template>
   <AppShell>
     <AppStatePanel
-      v-if="!hasSubscriptions"
+      v-if="isLoading"
+      title="대시보드를 불러오는 중입니다"
+      description="이번 달 결제 총액과 가까운 결제 일정을 계산하고 있습니다."
+      icon="sparkles"
+      tone="info"
+    />
+
+    <AppStatePanel
+      v-else-if="errorMessage"
+      title="대시보드 데이터를 불러오지 못했습니다"
+      :description="errorMessage"
+      icon="chart"
+      tone="error"
+    >
+      <template #actions>
+        <button class="primary-button" @click="handleRetry">다시 시도</button>
+      </template>
+    </AppStatePanel>
+
+    <AppStatePanel
+      v-else-if="!hasSubscriptions"
       title="아직 등록된 구독이 없습니다"
       description="첫 구독을 등록하면 대시보드와 결제 캘린더가 바로 채워집니다."
       icon="plus"
@@ -55,8 +135,8 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
           <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p class="eyebrow-label">{{ monthLabel }}</p>
-              <h1 class="mt-2 text-[26px] font-black tracking-[-0.04em] text-neutral-900 lg:text-[32px]">{{ authStore.nickname || dashboardStore.userSummary.nickname || '사용자' }}님 대시보드</h1>
-              <p class="mt-2 text-sm leading-6 text-neutral-500">이번 달 결제 총액과 가까운 결제 일정을 먼저 확인하세요.</p>
+              <h1 class="mt-2 text-[26px] font-black tracking-[-0.04em] text-neutral-900 lg:text-[32px]">{{ authStore.nickname || userSummary.nickname || '사용자' }}님 대시보드</h1>
+              <p class="mt-2 text-sm leading-6 text-neutral-500">{{ summaryDescription }}</p>
             </div>
             <div class="flex flex-wrap gap-2.5">
               <button class="primary-button !min-h-[44px] !px-4" @click="go('/subscriptions/new')">구독 추가</button>
@@ -82,7 +162,7 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
                 <RouterLink to="/subscriptions" class="text-sm font-semibold text-brand-600">전체 보기</RouterLink>
               </div>
 
-              <div class="mt-4 grid gap-3">
+              <div v-if="dueSoon.length" class="mt-4 grid gap-3">
                 <article v-for="item in dueSoon" :key="item.subscriptionId" class="flex items-center justify-between gap-3 rounded-[18px] border border-[rgba(46,34,10,0.08)] bg-white px-4 py-3">
                   <div class="flex min-w-0 items-center gap-3">
                     <span class="grid h-10 w-10 place-items-center rounded-2xl bg-brand-50 ring-1 ring-[rgba(46,34,10,0.08)]">
@@ -100,22 +180,31 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
                     </span>
                     <div class="min-w-0">
                       <p class="truncate text-sm font-bold text-neutral-900">{{ item.subscriptionName }}</p>
-                      <p class="mt-1 text-[12px] text-neutral-500">{{ item.nextPaymentDate }} · {{ formatCurrency(item.paymentAmount) }}</p>
+                      <p class="mt-1 text-[12px] text-neutral-500">{{ item.nextPaymentDateShort }} · {{ formatCurrency(item.paymentAmount) }}</p>
                     </div>
                   </div>
-                  <span class="text-xs font-extrabold text-[#8A6A00]">D-{{ item.dDay }}</span>
+                  <span class="text-xs font-extrabold text-[#8A6A00]">{{ formatDday(item.dDay) }}</span>
                 </article>
               </div>
+
+              <AppStatePanel
+                v-else
+                class="mt-4"
+                compact
+                title="가까운 결제 일정이 없습니다"
+                description="구독이 등록되면 다음 결제일 기준으로 자동 정렬됩니다."
+                icon="calendar"
+              />
             </section>
 
             <section class="rounded-[24px] border border-[rgba(46,34,10,0.08)] bg-[linear-gradient(180deg,rgba(255,248,221,0.9),rgba(255,253,247,0.95))] p-4">
               <p class="text-sm font-semibold text-[#8A6A00]">이번 달 핵심</p>
-              <p class="mt-3 text-[28px] font-black tracking-[-0.04em] text-neutral-900">{{ formatCurrency(dashboardStore.userSummary.monthlyExpectedAmount) }}</p>
-              <p class="mt-2 text-sm leading-6 text-neutral-500">{{ dashboardStore.nextPayment.subscriptionName }} 결제가 가장 가깝고, {{ dashboardStore.userSummary.activeSubscriptionCount }}개의 구독이 활성 상태입니다.</p>
+              <p class="mt-3 text-[28px] font-black tracking-[-0.04em] text-neutral-900">{{ formatCurrency(userSummary.monthlyExpectedAmount) }}</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-500">{{ summaryDescription }}</p>
               <div class="mt-4 grid gap-2.5">
                 <div class="rounded-[18px] border border-[rgba(46,34,10,0.08)] bg-white/88 px-4 py-3">
                   <p class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">다음 결제</p>
-                  <p class="mt-1.5 text-sm font-bold text-neutral-900">{{ dashboardStore.nextPayment.nextPaymentDate }} · {{ dashboardStore.nextPayment.paymentCardName }}</p>
+                  <p class="mt-1.5 text-sm font-bold text-neutral-900">{{ nextPayment.nextPaymentDate }} · {{ nextPayment.paymentCardName }}</p>
                 </div>
                 <div class="rounded-[18px] border border-[rgba(46,34,10,0.08)] bg-white/88 px-4 py-3">
                   <p class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">카테고리</p>
@@ -132,8 +221,8 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
             <h2 class="mt-2 text-[22px] font-bold tracking-[-0.03em] text-neutral-900">가장 많이 쓰는 분야</h2>
           </div>
 
-          <div class="mt-4 grid gap-3">
-            <article v-for="row in dashboardStore.categorySpendSummary" :key="row.categoryName" class="ghost-card p-4">
+          <div v-if="categorySpendSummary.length" class="mt-4 grid gap-3">
+            <article v-for="row in categorySpendSummary" :key="row.categoryName" class="ghost-card p-4">
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <AppAsset
@@ -160,6 +249,15 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
               </div>
             </article>
           </div>
+
+          <AppStatePanel
+            v-else
+            class="mt-4"
+            compact
+            title="카테고리 분석 데이터가 없습니다"
+            description="이번 달 결제 내역이 생기면 카테고리별 비중이 표시됩니다."
+            icon="grid"
+          />
         </div>
       </section>
 
@@ -169,7 +267,7 @@ const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Numbe
             <p class="eyebrow-label">월별 흐름</p>
             <h2 class="mt-2 text-[22px] font-bold tracking-[-0.03em] text-neutral-900">최근 6개월 지출</h2>
           </div>
-          <p class="text-sm text-neutral-500">평균 {{ formatCurrency(dashboardStore.averageMonthlySpend) }}</p>
+          <p class="text-sm text-neutral-500">평균 {{ formatCurrency(averageMonthlySpend) }}</p>
         </div>
 
         <div class="mt-5 grid grid-cols-6 items-end gap-3">

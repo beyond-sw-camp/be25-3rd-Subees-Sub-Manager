@@ -19,16 +19,8 @@ const previewNotifications = computed(() => props.notifications.slice(0, 4))
 
 const typeLabel = (value) => ({
   PAYMENT: '결제 알림',
-  INSIGHT: '지출 인사이트',
-  COMMUNITY: '커뮤니티',
   SYSTEM: '시스템',
 }[value] || '알림')
-
-const iconName = (value) => {
-  if (value === 'COMMUNITY') return 'community'
-  if (value === 'INSIGHT') return 'chart'
-  return 'bell'
-}
 </script>
 
 <template>
@@ -37,7 +29,7 @@ const iconName = (value) => {
       <div class="flex items-start justify-between gap-3">
         <div>
           <p class="text-xs font-black uppercase tracking-[0.16em] text-[#8A6A00]">알림</p>
-          <h3 class="mt-1 text-lg font-black tracking-[-0.03em] text-neutral-900">갱신 일정과 확인할 항목만 모아봤어요</h3>
+          <h3 class="mt-1 text-lg font-black tracking-[-0.03em] text-neutral-900">다가오는 결제 일정만 모아봤어요</h3>
           <p class="mt-2 text-sm leading-6 text-neutral-500">최신 알림이 위에 오도록 정리했습니다. 읽지 않은 알림은 {{ unreadCount }}개입니다.</p>
         </div>
         <button type="button" class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[rgba(46,34,10,0.1)] bg-white text-neutral-500 transition hover:text-neutral-900" aria-label="알림 팝업 닫기" @click="emit('close')">
@@ -51,13 +43,13 @@ const iconName = (value) => {
         <article v-for="item in previewNotifications" :key="item.notificationId" class="rounded-[22px] border px-4 py-4 transition" :class="item.read ? 'border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.85)]' : 'border-[rgba(242,210,33,0.26)] bg-[rgba(255,248,224,0.92)] shadow-soft'">
           <div class="flex items-start gap-3">
             <div class="mt-0.5 grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-[rgba(46,34,10,0.08)] bg-white text-[#8A6A00]">
-              <AppIcon :name="iconName(item.type)" :size="17" />
+              <AppIcon name="bell" :size="17" />
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-neutral-500 ring-1 ring-[rgba(46,34,10,0.08)]">{{ typeLabel(item.type) }}</span>
+                <span class="rounded-full bg-[rgba(46,34,10,0.06)] px-2.5 py-1 text-[11px] font-extrabold text-neutral-500">{{ item.dday || '-' }}</span>
                 <span v-if="!item.read" class="rounded-full bg-[rgba(242,210,33,0.2)] px-2.5 py-1 text-[11px] font-extrabold text-[#8A6A00]">새 알림</span>
-                <span class="ml-auto text-[11px] font-bold text-neutral-400">{{ item.createdAt }}</span>
               </div>
               <button type="button" class="mt-3 block w-full text-left" @click="emit('select', item.notificationId)">
                 <p class="text-[15px] font-black tracking-[-0.03em] text-neutral-900">{{ item.title }}</p>
@@ -75,7 +67,7 @@ const iconName = (value) => {
       <div v-else class="grid min-h-[220px] place-items-center rounded-[24px] border border-dashed border-[rgba(46,34,10,0.12)] bg-[rgba(255,253,247,0.7)] px-6 text-center">
         <div>
           <p class="text-base font-black tracking-[-0.03em] text-neutral-900">표시할 알림이 없습니다</p>
-          <p class="mt-2 text-sm leading-6 text-neutral-500">새 알림이 들어오면 이 팝업에서 최신 순으로 바로 확인할 수 있습니다.</p>
+          <p class="mt-2 text-sm leading-6 text-neutral-500">새 알림이 생성되면 이 팝업에서 바로 확인할 수 있습니다.</p>
         </div>
       </div>
     </div>

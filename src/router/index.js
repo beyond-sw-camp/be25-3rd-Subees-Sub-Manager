@@ -106,15 +106,11 @@ const routes = [
   },
   {
     path: '/password/reset/request',
-    name: 'password-reset-request',
-    component: () => import('@/pages/PasswordResetRequestPage.vue'),
-    meta: { guestOnly: true },
+    redirect: '/login',
   },
   {
     path: '/password/reset/change',
-    name: 'password-reset-change',
-    component: () => import('@/pages/PasswordResetPage.vue'),
-    meta: { guestOnly: true },
+    redirect: '/login',
   },
   {
     path: '/notifications',

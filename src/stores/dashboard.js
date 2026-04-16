@@ -1,175 +1,350 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { getPaymentAnalytics, getPaymentCalendar } from '@/api/calendar'
+import http from '@/api/http'
 
-const mockDashboard = {
-  userSummary: {
-    nickname: '민수',
-    monthlyExpectedAmount: 248000,
-    previousMonthChangeRate: 12.4,
-    previousMonthAmount: 220700,
-    activeSubscriptionCount: 12,
-    potentialSavingsAmount: 12000,
-    nextPaymentDate: '04/11',
-    billingWindowLabel: '2026년 4월',
-  },
-  nextPayment: {
-    subscriptionId: 1,
-    subscriptionName: '넷플릭스',
-    categoryName: 'OTT',
-    categoryColor: '#BA6B52',
-    serviceInitial: 'N',
-    nextPaymentDate: '2026-04-11',
-    paymentAmount: 17000,
-    paymentCardName: '현대카드',
-    dDay: 3,
-    billingCycleLabel: '매월 결제',
-  },
-  upcomingSubscriptions: [
-    {
-      subscriptionId: 1,
-      subscriptionName: '넷플릭스',
-      categoryName: 'OTT',
-      categoryColor: '#BA6B52',
-      serviceInitial: 'N',
-      nextPaymentDate: '04/11',
-      paymentAmount: 17000,
-      dDay: 3,
-      paymentCardName: '현대카드',
-    },
-    {
-      subscriptionId: 2,
-      subscriptionName: 'ChatGPT',
-      categoryName: 'AI',
-      categoryColor: '#8A6A00',
-      serviceInitial: 'C',
-      nextPaymentDate: '04/12',
-      paymentAmount: 29000,
-      dDay: 4,
-      paymentCardName: 'KB국민카드',
-    },
-    {
-      subscriptionId: 3,
-      subscriptionName: 'iCloud+',
-      categoryName: 'Cloud',
-      categoryColor: '#C7B895',
-      serviceInitial: 'I',
-      nextPaymentDate: '04/16',
-      paymentAmount: 11000,
-      dDay: 8,
-      paymentCardName: '신한카드',
-    },
-    {
-      subscriptionId: 4,
-      subscriptionName: 'Spotify',
-      categoryName: 'Music',
-      categoryColor: '#5D8260',
-      serviceInitial: 'S',
-      nextPaymentDate: '04/18',
-      paymentAmount: 10900,
-      dDay: 10,
-      paymentCardName: '삼성카드',
-    },
-  ],
-  categorySpendSummary: [
-    {
-      categoryName: 'AI',
-      totalAmount: 87000,
-      ratio: 35,
-      subscriptionCount: 4,
-      colorHex: '#8A6A00',
-      description: 'AI 도구 지출 비중',
-    },
-    {
-      categoryName: 'Cloud',
-      totalAmount: 62000,
-      ratio: 25,
-      subscriptionCount: 2,
-      colorHex: '#C7B895',
-      description: '클라우드/협업 도구 지출',
-    },
-    {
-      categoryName: 'OTT',
-      totalAmount: 52000,
-      ratio: 21,
-      subscriptionCount: 3,
-      colorHex: '#BA6B52',
-      description: 'OTT 구독 지출 비중',
-    },
-    {
-      categoryName: 'Music',
-      totalAmount: 30900,
-      ratio: 12,
-      subscriptionCount: 2,
-      colorHex: '#5D8260',
-      description: '음악 구독 지출 비중',
-    },
-    {
-      categoryName: 'Etc',
-      totalAmount: 16100,
-      ratio: 7,
-      subscriptionCount: 1,
-      colorHex: '#998C71',
-      description: '기타 생활형 구독 지출',
-    },
-  ],
-  monthlySpendTrend: [
-    { key: '2025-11', monthLabel: '11월', totalAmount: 182000 },
-    { key: '2025-12', monthLabel: '12월', totalAmount: 196000 },
-    { key: '2026-01', monthLabel: '1월', totalAmount: 207000 },
-    { key: '2026-02', monthLabel: '2월', totalAmount: 221000 },
-    { key: '2026-03', monthLabel: '3월', totalAmount: 238000 },
-    { key: '2026-04', monthLabel: '4월', totalAmount: 248000, isCurrent: true },
-  ],
-  quickActions: [
-    { title: '결제 캘린더', description: '날짜별 결제 예정 내역 확인', to: '/calendar', badge: '일정', iconText: '달력' },
-    { title: '구독 추가', description: '새로운 구독 정보를 등록', to: '/subscriptions/new', badge: '핵심', iconText: '추가' },
-    { title: '구독 목록', description: '전체 구독 항목과 카드 확인', to: '/subscriptions', badge: '관리', iconText: '목록' },
-    { title: '커뮤니티', description: '다른 사용자의 구독 팁과 후기를 확인합니다.', to: '/community', badge: '탐색', iconText: '커뮤' },
-    { title: 'FAQ', description: '자주 묻는 질문을 빠르게 찾습니다.', to: '/faq', badge: '지원', iconText: 'FAQ' },
-  ],
-  insights: [
-    {
-      key: 'top-category',
-      tone: 'brand',
-      title: 'AI 카테고리 비중이 가장 높습니다',
-      description: '이번 달 전체 예상 지출의 35%가 AI 도구에 집중되어 있습니다. 업무용과 개인용 사용 목적을 분리해보면 절감 포인트를 찾기 쉽습니다.',
-      to: '/calendar',
-      actionLabel: '결제 캘린더 보기',
-    },
-    {
-      key: 'upcoming-alert',
-      tone: 'amber',
-      title: '7일 이내 결제 예정 항목이 2건 있습니다',
-      description: '이번 주 안에 넷플릭스와 ChatGPT 결제가 예정되어 있습니다. 카드 한도와 자동이체 상태를 미리 점검해두는 편이 안전합니다.',
-      to: '/calendar',
-      actionLabel: '결제 캘린더 보기',
-    },
-    {
-      key: 'saving-chance',
-      tone: 'emerald',
-      title: '절감 가능 금액이 12,000원으로 추정됩니다',
-      description: '중복 사용 가능성이 있는 항목 1건이 감지되었습니다. 사용 빈도를 점검하고 한 달만 정리해도 즉시 절감 효과를 볼 수 있습니다.',
-      to: '/subscriptions',
-      actionLabel: '구독 목록 보기',
-    },
-  ],
+const CATEGORY_COLORS = {
+  OTT: '#BA6B52',
+  Music: '#5D8260',
+  AI: '#8A6A00',
+  Cloud: '#C7B895',
+  ETC: '#998C71',
+  Etc: '#998C71',
 }
 
-export const useDashboardStore = defineStore('dashboard', {
-  state: () => ({
-    isLoading: false,
-    ...mockDashboard,
-  }),
-  getters: {
-    highestCategory(state) {
-      return [...state.categorySpendSummary].sort((a, b) => b.totalAmount - a.totalAmount)[0]
-    },
-    totalCategoryAmount(state) {
-      return state.categorySpendSummary.reduce((total, item) => total + item.totalAmount, 0)
-    },
-    averageMonthlySpend(state) {
-      if (!state.monthlySpendTrend.length) return 0
-      const total = state.monthlySpendTrend.reduce((sum, item) => sum + item.totalAmount, 0)
-      return Math.round(total / state.monthlySpendTrend.length)
-    },
-  },
+const createDefaultSummary = () => ({
+  nickname: '',
+  monthlyExpectedAmount: 0,
+  previousMonthChangeRate: 0,
+  previousMonthAmount: 0,
+  activeSubscriptionCount: 0,
+  potentialSavingsAmount: 0,
+  nextPaymentDate: '-',
+  billingWindowLabel: '이번 달',
+})
+
+const createDefaultNextPayment = () => ({
+  subscriptionId: null,
+  subscriptionName: '예정된 결제가 없습니다',
+  categoryName: '-',
+  nextPaymentDate: '-',
+  paymentAmount: 0,
+  paymentCardName: '등록 카드 없음',
+  dDay: null,
+  billingCycleLabel: '-',
+})
+
+const normalizeSinglePayload = (response) => {
+  const root = response?.data ?? response
+  return root?.data ?? root?.items?.[0] ?? null
+}
+
+const normalizeArrayPayload = (response) => {
+  const root = response?.data ?? response
+  return root?.data ?? root?.items ?? []
+}
+
+const parseDateString = (value) => {
+  if (!value || typeof value !== 'string') return null
+
+  const [year, month, day] = value.split('-').map(Number)
+
+  if (!year || !month || !day) return null
+
+  return new Date(year, month - 1, day)
+}
+
+const startOfDate = (value = new Date()) => {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate())
+}
+
+const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
+const formatShortDate = (value) => {
+  const date = value instanceof Date ? value : parseDateString(value)
+  if (!date) return '-'
+  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+}
+
+const formatFullDate = (value) => {
+  const date = value instanceof Date ? value : parseDateString(value)
+  if (!date) return '-'
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+const getBillingCycleLabel = (billingCycle) => {
+  if (billingCycle === '1Y') return '매년 결제'
+  return '매월 결제'
+}
+
+const createClampedDate = (year, monthIndex, day) => {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate()
+  return new Date(year, monthIndex, Math.min(day, lastDay))
+}
+
+const computeNextPaymentDate = (startDateValue, billingCycle, referenceDate = new Date()) => {
+  const startDate = parseDateString(startDateValue)
+
+  if (!startDate) return null
+
+  const today = startOfDate(referenceDate)
+  const startDay = startDate.getDate()
+
+  if (billingCycle === '1Y') {
+    let candidate = createClampedDate(today.getFullYear(), startDate.getMonth(), startDay)
+
+    if (candidate < today) {
+      candidate = createClampedDate(today.getFullYear() + 1, startDate.getMonth(), startDay)
+    }
+
+    return candidate
+  }
+
+  let candidate = createClampedDate(today.getFullYear(), today.getMonth(), startDay)
+
+  if (candidate < today) {
+    candidate = createClampedDate(today.getFullYear(), today.getMonth() + 1, startDay)
+  }
+
+  return candidate
+}
+
+const calculateDday = (targetDate, referenceDate = new Date()) => {
+  if (!(targetDate instanceof Date)) return null
+
+  const today = startOfDate(referenceDate)
+  const diff = targetDate.getTime() - today.getTime()
+
+  return Math.round(diff / (1000 * 60 * 60 * 24))
+}
+
+const getRelativeMonth = (offset) => {
+  const today = new Date()
+  const date = new Date(today.getFullYear(), today.getMonth() + offset, 1)
+
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+    monthLabel: `${date.getMonth() + 1}월`,
+    isCurrent: offset === 0,
+  }
+}
+
+const estimatePotentialSavings = (subscriptions = []) => {
+  const duplicatedMap = subscriptions.reduce((acc, item) => {
+    const key = String(item.subscriptionName || '').trim().toLowerCase()
+
+    if (!key) return acc
+
+    if (!acc.has(key)) {
+      acc.set(key, [])
+    }
+
+    acc.get(key).push(Number(item.paymentAmount || 0))
+    return acc
+  }, new Map())
+
+  let total = 0
+
+  duplicatedMap.forEach((amounts) => {
+    if (amounts.length <= 1) return
+
+    const sorted = [...amounts].sort((a, b) => b - a)
+    total += sorted.slice(1).reduce((sum, amount) => sum + amount, 0)
+  })
+
+  return total
+}
+
+export const useDashboardStore = defineStore('dashboard', () => {
+  const isLoading = ref(false)
+  const errorMessage = ref('')
+  const userSummary = ref(createDefaultSummary())
+  const nextPayment = ref(createDefaultNextPayment())
+  const upcomingSubscriptions = ref([])
+  const categorySpendSummary = ref([])
+  const monthlySpendTrend = ref([])
+  const hasFetched = ref(false)
+
+  const highestCategory = computed(() => {
+    return [...categorySpendSummary.value].sort((a, b) => b.totalAmount - a.totalAmount)[0] ?? null
+  })
+
+  const totalCategoryAmount = computed(() => {
+    return categorySpendSummary.value.reduce((total, item) => total + Number(item.totalAmount || 0), 0)
+  })
+
+  const averageMonthlySpend = computed(() => {
+    if (!monthlySpendTrend.value.length) return 0
+
+    const total = monthlySpendTrend.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
+    return Math.round(total / monthlySpendTrend.value.length)
+  })
+
+  const resetState = () => {
+    userSummary.value = createDefaultSummary()
+    nextPayment.value = createDefaultNextPayment()
+    upcomingSubscriptions.value = []
+    categorySpendSummary.value = []
+    monthlySpendTrend.value = []
+    hasFetched.value = false
+  }
+
+  const fetchDashboard = async ({ force = false } = {}) => {
+    if (hasFetched.value && !force) {
+      return {
+        userSummary: userSummary.value,
+        nextPayment: nextPayment.value,
+        upcomingSubscriptions: upcomingSubscriptions.value,
+      }
+    }
+    const currentMonth = getRelativeMonth(0)
+    const monthRange = Array.from({ length: 6 }, (_, index) => getRelativeMonth(index - 5))
+
+    try {
+      isLoading.value = true
+      errorMessage.value = ''
+
+      const [trendResponses, categoryResponse, subscriptionsResponse] = await Promise.all([
+        Promise.all(
+          monthRange.map((item) => getPaymentCalendar({
+            year: item.year,
+            month: item.month,
+          })),
+        ),
+        getPaymentAnalytics({
+          year: currentMonth.year,
+          month: currentMonth.month,
+          rangeType: 'MONTH',
+        }),
+        http.get('/api/v1/subscriptions'),
+      ])
+
+      const trendData = trendResponses.map((response, index) => {
+        const normalized = normalizeSinglePayload(response)
+        const meta = monthRange[index]
+
+        return {
+          key: meta.key,
+          monthLabel: meta.monthLabel,
+          totalAmount: Number(normalized?.monthTotalAmount || 0),
+          isCurrent: meta.isCurrent,
+        }
+      })
+
+      const subscriptions = normalizeArrayPayload(subscriptionsResponse)
+      const subscriptionDetailsResponses = await Promise.all(
+        subscriptions.map((item) => http.get(`/api/v1/subscriptions/${item.subscriptionId}`)),
+      )
+
+      const today = new Date()
+      const enrichedSubscriptions = subscriptions.map((item, index) => {
+        const detail = normalizeSinglePayload(subscriptionDetailsResponses[index])
+        const nextPaymentDate = computeNextPaymentDate(detail?.startDate, detail?.billingCycle, today)
+        const dDay = calculateDday(nextPaymentDate, today)
+
+        return {
+          subscriptionId: Number(item.subscriptionId),
+          subscriptionName: item.itemName || '구독 서비스',
+          categoryName: item.categoryName || '기타',
+          paymentAmount: Number(detail?.price ?? item.price ?? 0),
+          paymentCardName: detail?.paymentMethod?.name || '등록 카드 없음',
+          billingCycle: detail?.billingCycle || '1M',
+          billingCycleLabel: getBillingCycleLabel(detail?.billingCycle),
+          nextPaymentDate: formatFullDate(nextPaymentDate),
+          nextPaymentDateShort: formatShortDate(nextPaymentDate),
+          dDay,
+        }
+      }).filter((item) => item.dDay != null)
+        .sort((a, b) => {
+          if (a.dDay !== b.dDay) return a.dDay - b.dDay
+          return a.subscriptionId - b.subscriptionId
+        })
+
+      const categoryAnalytics = normalizeSinglePayload(categoryResponse)
+      const categories = Array.isArray(categoryAnalytics?.categories)
+        ? categoryAnalytics.categories.map((item) => ({
+            categoryName: item.categoryName || '기타',
+            totalAmount: Number(item.totalAmount || 0),
+            ratio: Number(item.ratio || 0),
+            subscriptionCount: Number(item.subscriptionCount || 0),
+            colorHex: CATEGORY_COLORS[item.categoryName] || CATEGORY_COLORS.ETC,
+            description: `${item.categoryName || '기타'} 카테고리 지출 비중`,
+          }))
+        : []
+
+      const currentSummary = trendData[trendData.length - 1] || { totalAmount: 0 }
+      const previousSummary = trendData[trendData.length - 2] || { totalAmount: 0 }
+      const previousMonthAmount = Number(previousSummary.totalAmount || 0)
+      const monthlyExpectedAmount = Number(currentSummary.totalAmount || 0)
+      const previousMonthChangeRate = previousMonthAmount > 0
+        ? Number((((monthlyExpectedAmount - previousMonthAmount) / previousMonthAmount) * 100).toFixed(1))
+        : 0
+
+      const upcomingList = enrichedSubscriptions.slice(0, 4)
+      const nextUpcomingPayment = upcomingList[0] || createDefaultNextPayment()
+
+      userSummary.value = {
+        nickname: '',
+        monthlyExpectedAmount,
+        previousMonthChangeRate,
+        previousMonthAmount,
+        activeSubscriptionCount: subscriptions.length,
+        potentialSavingsAmount: estimatePotentialSavings(enrichedSubscriptions),
+        nextPaymentDate: nextUpcomingPayment.nextPaymentDateShort || '-',
+        billingWindowLabel: `${currentMonth.year}년 ${currentMonth.month}월`,
+      }
+
+      nextPayment.value = {
+        subscriptionId: nextUpcomingPayment.subscriptionId ?? null,
+        subscriptionName: nextUpcomingPayment.subscriptionName || '예정된 결제가 없습니다',
+        categoryName: nextUpcomingPayment.categoryName || '-',
+        nextPaymentDate: nextUpcomingPayment.nextPaymentDate || '-',
+        paymentAmount: Number(nextUpcomingPayment.paymentAmount || 0),
+        paymentCardName: nextUpcomingPayment.paymentCardName || '등록 카드 없음',
+        dDay: nextUpcomingPayment.dDay,
+        billingCycleLabel: nextUpcomingPayment.billingCycleLabel || '-',
+      }
+
+      upcomingSubscriptions.value = enrichedSubscriptions
+      categorySpendSummary.value = categories
+      monthlySpendTrend.value = trendData
+      hasFetched.value = true
+
+      return {
+        userSummary: userSummary.value,
+        nextPayment: nextPayment.value,
+        upcomingSubscriptions: upcomingSubscriptions.value,
+      }
+    } catch (error) {
+      console.error('dashboard fetch 실패:', error)
+      errorMessage.value = '대시보드 데이터를 불러오지 못했습니다.'
+      resetState()
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return {
+    isLoading,
+    errorMessage,
+    userSummary,
+    nextPayment,
+    upcomingSubscriptions,
+    categorySpendSummary,
+    monthlySpendTrend,
+    hasFetched,
+    highestCategory,
+    totalCategoryAmount,
+    averageMonthlySpend,
+    fetchDashboard,
+    resetState,
+    formatCurrency,
+  }
 })
