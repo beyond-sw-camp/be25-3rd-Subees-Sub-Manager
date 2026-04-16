@@ -13,5 +13,6 @@ export const getCommunityPostDetail = (postId) => http.get(`/api/v1/community/po
 export const createCommunityPost = (payload) => http.post('/api/v1/community/posts', payload) // 글 작성
 export const updateCommunityPost = (postId, payload) => http.put(`/api/v1/community/posts/${postId}`, payload) // 글 수정
 export const deleteCommunityPost = (postId) => http.delete(`/api/v1/community/posts/${postId}`) // 글 삭제
-export const toggleCommunityScrap = (postId) => http.post(`/api/v1/community/posts/${postId}/scraps`) // 스크랩
-export const getScrappedCommunityPosts = () => http.get('/api/v1/community/scraps') // 스크랩 조회
+export const toggleCommunityScrap = (postId) => http.post(`/api/v1/community/posts/${postId}/scraps`) // 스크랩 등록
+export const cancelCommunityScrap = (postId) => http.delete(`/api/v1/community/posts/${postId}/scraps`) // 스크랩 취소
+export const getScrappedCommunityPosts = (params) => http.get('/api/v1/community/scraps', { params }) // 스크랩 목록 페이징 조회

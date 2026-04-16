@@ -2,9 +2,9 @@ import { computed, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 //api 함수를 import해서 사용
-import { getCommunityPosts, getCommunityPostDetail, createCommunityPost, updateCommunityPost, deleteCommunityPost } from '@/api/community'
+import { getCommunityPosts, getCommunityPostDetail, createCommunityPost, updateCommunityPost, deleteCommunityPost, toggleCommunityScrap, cancelCommunityScrap, getScrappedCommunityPosts } from '@/api/community'
 
-const SCRAP_STORAGE_KEY = 'subees-community-scraps'
+const getScrapStorageKey = (userId) => `subees-community-scraps-${userId ?? 'guest'}`
 
 const loadJson = (key, fallback) => {
   try {
@@ -39,7 +39,7 @@ export const useCommunityStore = defineStore('community', () => {
     totalPages: 0, // 0 > 0 = false → 스킵 → API 호출해서 페이지 불러옴. 1로 설정시 페이지 예외 뜸
     totalCount: 0,
   })
-  const scrappedPostIds = ref(loadJson(SCRAP_STORAGE_KEY, []))
+  const scrappedPostIds = ref(loadJson(getScrapStorageKey(authStore.userId), []))
   const filters = reactive({
     query: '',
     sortBy: 'latest',
@@ -48,7 +48,17 @@ export const useCommunityStore = defineStore('community', () => {
   const successMessage = ref('')
   const errorMessage = ref('')
 
-  const PAGE_SIZE = 10 // 한 페이지당 10개의 글
+  const PAGE_SIZE = 10
+  const SCRAP_DISPLAY_SIZE = 5   // 화면에 5개씩 표시
+  const SCRAP_BACKEND_SIZE = 10  // 백에서 10개씩 반환 (고정)
+
+  // 스크랩 목록 페이징 상태
+  const scrapPosts = ref([])
+  const scrapPagination = reactive({
+    page: 1,
+    totalPages: 1,
+    totalCount: 0,
+  }) // 한 페이지당 10개의 글
 
   const fetchPosts = async (page = 1) => {
     // 페이지 범위 사전 검증 (pagination.totalPages가 이미 설정된 경우)
@@ -102,6 +112,72 @@ export const useCommunityStore = defineStore('community', () => {
     }
   }
 
+  const fetchScraps = async (displayPage = 1) => {
+    // 화면 5개, 백 10개 → 화면 페이지를 백 페이지로 변환
+    // 화면 1,2페이지 → 백 1페이지 / 화면 3,4페이지 → 백 2페이지
+    const backendPage = Math.ceil((displayPage * SCRAP_DISPLAY_SIZE) / SCRAP_BACKEND_SIZE)
+
+    isLoading.value = true
+    errorMessage.value = ''
+    try {
+      const response = await getScrappedCommunityPosts({ page: backendPage })
+      const data = response.data.data
+
+      // 백 결과(최대 10개)에서 화면 페이지에 맞는 5개 슬라이스
+      const sliceStart = ((displayPage - 1) * SCRAP_DISPLAY_SIZE) % SCRAP_BACKEND_SIZE
+      scrapPosts.value = (data.scraps || [])
+        .slice(sliceStart, sliceStart + SCRAP_DISPLAY_SIZE)
+        .map((scrap) => ({
+          postId: scrap.postId,
+          title: scrap.title,
+          authorNickname: scrap.nickname,
+          createdAt: scrap.createdAt,
+          createdAtLabel: formatDateTime(scrap.createdAt),
+          isScrapped: true,
+        }))
+
+      scrapPagination.page = displayPage
+      scrapPagination.totalCount = data.totalCount
+      // 화면 기준 전체 페이지 수 = 전체 스크랩 수 / 화면 1페이지 표시 개수
+      scrapPagination.totalPages = Math.ceil(data.totalCount / SCRAP_DISPLAY_SIZE)
+    } catch (error) {
+      const serverMessage = error.response?.data?.message
+      if (serverMessage) {
+        setError(serverMessage)
+      } else if (!error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크를 확인해주세요.')
+      } else {
+        setError('스크랩 목록을 불러오지 못했습니다.')
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // 스크랩 목록 페이지에서 해제 버튼 클릭 시 호출
+  // toggleScrap과 달리, 항상 DELETE를 호출하고 목록을 새로고침
+  const cancelScrapFromList = async (postId) => {
+    clearMessages()
+    const targetId = Number(postId)
+    try {
+      await cancelCommunityScrap(targetId)
+      // 로컬 스크랩 ID에서도 제거
+      scrappedPostIds.value = scrappedPostIds.value.filter((id) => id !== targetId)
+      setSuccess('스크랩을 해제했습니다.')
+      // 현재 페이지 목록 새로고침 (해제된 항목 제거 반영)
+      await fetchScraps(scrapPagination.page)
+    } catch (error) {
+      const serverMessage = error.response?.data?.message
+      if (serverMessage) {
+        setError(serverMessage)
+      } else if (!error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크를 확인해주세요.')
+      } else {
+        setError('스크랩 해제 중 오류가 발생했습니다.')
+      }
+    }
+  }
+
   const fetchPostDetail = async (postId) => {
     isLoading.value = true // 로딩 시작
     try {
@@ -131,10 +207,15 @@ export const useCommunityStore = defineStore('community', () => {
     }
   }
 
+  // 유저가 바뀌면(로그인/로그아웃/계정 전환) 해당 유저의 스크랩 목록으로 교체
+  watch(() => authStore.userId, (newUserId) => {
+    scrappedPostIds.value = loadJson(getScrapStorageKey(newUserId), [])
+  })
+
   watch(
     scrappedPostIds,
     (value) => {
-      saveJson(SCRAP_STORAGE_KEY, value)
+      saveJson(getScrapStorageKey(authStore.userId), value)
     },
     { deep: true },
   )
@@ -301,34 +382,60 @@ export const useCommunityStore = defineStore('community', () => {
     }
   }
 
-  const toggleScrap = (postId) => {
+  const toggleScrap = async (postId) => {
     clearMessages()
-    const targetId = Number(postId)
-    const index = posts.value.findIndex((post) => post.postId === targetId)
-    if (index < 0) {
-      setError('스크랩할 게시글을 찾을 수 없습니다.')
-      return false
+
+    // 로그인 여부 + 토큰 존재 여부 체크
+    // 비로그인 상태이거나 토큰이 없으면 API 호출 시 인증 실패로 500 발생
+    if (!authStore.isLoggedIn || !authStore.accessToken) {
+      setError('로그인 후 스크랩하실 수 있습니다.')
+      return
     }
 
+    const targetId = Number(postId)
     const hasScrapped = scrappedPostIds.value.includes(targetId)
 
-    if (hasScrapped) {
-      scrappedPostIds.value = scrappedPostIds.value.filter((id) => id !== targetId)
-      posts.value[index] = {
-        ...posts.value[index],
-        scrapCount: Math.max(0, posts.value[index].scrapCount - 1),
+    try {
+      if (hasScrapped) {
+        // 스크랩 취소시  DELETE API 호출
+        await cancelCommunityScrap(targetId)
+        scrappedPostIds.value = scrappedPostIds.value.filter((id) => id !== targetId)
+        // 상세 페이지 상태 반영
+        if (currentPost.value?.postId === targetId) {
+          currentPost.value = {
+            ...currentPost.value,
+            isScrapped: false,
+            scrapCount: Math.max(0, currentPost.value.scrapCount - 1),
+          }
+        }
+        setSuccess('스크랩을 해제했습니다.')
+      } else {
+        // 스크랩 등록 시 POST API 호출
+        await toggleCommunityScrap(targetId)
+        scrappedPostIds.value = [...scrappedPostIds.value, targetId]
+        // 상세 페이지 상태 반영
+        if (currentPost.value?.postId === targetId) {
+          currentPost.value = {
+            ...currentPost.value,
+            isScrapped: true,
+            scrapCount: currentPost.value.scrapCount + 1,
+          }
+        }
+        setSuccess('게시글을 스크랩했습니다.')
       }
-      setSuccess('스크랩을 해제했습니다.')
-      return true
+    } catch (error) {
+      // 백 에러 형식: { code, status, message }
+      // 409 ALREADY_SCRAPPED: 이미 스크랩한 게시글
+      // 400 INVALID_SCRAP_REQUEST: 자신의 글 스크랩 불가
+      const serverMessage = error.response?.data?.message
+      if (serverMessage) {
+        setError(serverMessage)
+      } else if (!error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크를 확인해주세요.')
+      } else {
+        setError('스크랩 처리 중 오류가 발생했습니다.')
+      }
     }
-
-    scrappedPostIds.value = [...scrappedPostIds.value, targetId]
-    posts.value[index] = {
-      ...posts.value[index],
-      scrapCount: posts.value[index].scrapCount + 1,
-    }
-    setSuccess('게시글을 스크랩했습니다.')
-    return true
   }
 
   const getPostById = (postId) => {
@@ -373,5 +480,9 @@ export const useCommunityStore = defineStore('community', () => {
     deletePost,
     toggleScrap,
     getPostById,
+    scrapPosts,
+    scrapPagination,
+    fetchScraps,
+    cancelScrapFromList,
   }
 })

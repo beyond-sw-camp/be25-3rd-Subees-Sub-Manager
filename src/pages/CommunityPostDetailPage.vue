@@ -4,10 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useCommunityStore } from '@/stores/community'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 const { successMessage, errorMessage, currentPost: post } = storeToRefs(communityStore)
 const showDeleteConfirm = ref(false)
 
@@ -21,6 +23,7 @@ const loadPost = async () => {
 onMounted(loadPost)
 watch(postId, loadPost)
 
+//삭제 버튼
 const handleDelete = async () => {
   const success = await communityStore.deletePost(postId.value)
   if (success) {
@@ -28,8 +31,9 @@ const handleDelete = async () => {
   }
 }
 
-const handleToggleScrap = () => {
-  communityStore.toggleScrap(postId.value)
+// 스크랩 버튼
+const handleToggleScrap = async () => {
+  await communityStore.toggleScrap(postId.value)
 }
 
 // const copyLink = async () => {
@@ -60,9 +64,12 @@ const handleToggleScrap = () => {
               <span>스크랩 {{ post.scrapCount }}</span>
               <span> {{ post.authorNickname }}</span>
             </div> 
-             <!-- 스크랩 & 공유하기 버튼  -->
+             <!-- 스크랩 버튼: 내 글이면 표시 안 함 (자신의 글 스크랩 불가) -->
              <div class="mt-4 flex justify-end gap-3">
-              <button type="button" class="primary-button !p-[15px]" @click="handleToggleScrap">
+              <!-- isScrapped = false : 스크랩하기 버튼 출력 -> post api 호출 -->
+               <!-- isScrapped = true : 스크랩 해제 버튼 출력 -> delete api 호출 -->
+              <!-- 로그인 상태이고 타인 글일 때만 스크랩 버튼 표시 -->
+              <button v-if="authStore.isLoggedIn && !post.isMine" type="button" class="primary-button !p-[15px]" @click="handleToggleScrap">
                 {{ post.isScrapped ? '스크랩 해제' : '스크랩하기' }}
               </button>
               <!-- <button type="button" class="secondary-button " @click="copyLink">공유하기</button> -->
