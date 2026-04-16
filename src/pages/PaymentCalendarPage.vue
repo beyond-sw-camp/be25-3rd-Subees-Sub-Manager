@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import PaymentCalendarGrid from '@/components/calendar/PaymentCalendarGrid.vue'
@@ -9,7 +9,6 @@ import AppStatePanel from '@/components/ui/AppStatePanel.vue'
 import { usePaymentCalendarStore } from '@/stores/paymentCalendar'
 
 const activePanelTab = ref('MONTH')
-
 
 const paymentCalendarStore = usePaymentCalendarStore()
 const {
@@ -30,7 +29,8 @@ const {
   currentMonthPaymentList,
 } = storeToRefs(paymentCalendarStore)
 
-const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
+const formatCurrency = (value) =>
+  `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
 const categoryDisplayName = (categoryName) => ({
   OTT: 'OTT',
@@ -39,6 +39,10 @@ const categoryDisplayName = (categoryName) => ({
   Cloud: '클라우드',
   Etc: '기타',
 }[categoryName] || categoryName)
+
+onMounted(async () => {
+  await paymentCalendarStore.fetchAll()
+})
 </script>
 
 <template>
