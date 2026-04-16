@@ -135,7 +135,7 @@ const handleToggleScrap = () => {
     </div>
 
     <section v-else class="shell-card p-10 text-center">
-      <p class="text-lg font-semibold text-neutral-900">게시글을 찾을 수 없습니다.</p>
+      <p class="text-lg font-semibold text-neutral-900">해당 게시글을 찾을 수 없습니다.</p>
       <RouterLink to="/community" class="mt-4 inline-flex text-sm font-semibold text-brand-600">목록으로 돌아가기</RouterLink>
     </section>
 
