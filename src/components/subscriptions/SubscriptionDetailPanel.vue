@@ -196,7 +196,7 @@ const toggleStatus = () => {
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">등록일</p>
-            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatDate(item.registeredAt) }}</p>
+            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatDate(item.registeredAt || item.paymentStartDate) }}</p>
           </div>
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">

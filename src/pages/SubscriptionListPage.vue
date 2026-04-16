@@ -191,6 +191,35 @@ const cancelDelete = () => {
   display: grid;
   gap: 20px;
 }
+.hero-stat-card {
+  height: 100%;
+  padding: 16px 18px;
+}
+
+.hero-stat-card--wide {
+  min-height: 88px;
+}
+
+.hero-stat-value {
+  margin-top: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #171717;
+  word-break: keep-all;
+}
+
+@media (min-width: 1280px) {
+  .hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 388px);
+    align-items: start;
+    gap: 24px;
+  }
+
+  .hero-stats {
+    margin-top: 38px;
+  }
+}
 
 .subscription-hero-copy {
   display: flex;
@@ -210,7 +239,9 @@ const cancelDelete = () => {
   margin-top: 16px;
   display: inline-flex;
   min-height: 42px;
-  width: 100%;
+  align-self: flex-start;
+  white-space: nowrap;
+  justify-content: center;
   align-items: center;
   border-radius: 9999px;
   border: 1px solid rgba(242, 210, 33, 0.2);
@@ -257,7 +288,7 @@ const cancelDelete = () => {
 }
 
 .hero-stat-card--wide {
-  min-height: 180px;
+  min-height: 100px;
 }
 
 .hero-stat-label {

@@ -26,19 +26,19 @@ export const useSubscriptionsStore = defineStore('subscriptions', () => {
     return billingCycle || 'MONTHLY'
   }
 
-  const mapSubscription = (item) => ({
-    subscriptionId: item?.subscriptionId ?? null,
-    categoryName: item?.categoryName ?? '',
-    subscriptionName: item?.subscriptionName ?? '',
-    paymentAmount: Number(item?.paymentAmount ?? 0),
-    billingCycle: normalizeBillingCycle(item?.billingCycle),
-    paymentCardName: item?.paymentCardName ?? '',
-    paymentStartDate: item?.paymentStartDate ?? '',
-    nextPaymentDate: item?.nextPaymentDate ?? '',
-    registeredAt: item?.registeredAt ?? item?.createdAt ?? '',
-    note: item?.note ?? '',
-    status: item?.status ?? 'ACTIVE',
-  })
+const mapSubscription = (item) => ({
+  subscriptionId: item?.subscriptionId ?? null,
+  categoryName: item?.categoryName ?? '',
+  subscriptionName: item?.subscriptionName ?? item?.itemName ?? '',
+  paymentAmount: Number(item?.paymentAmount ?? item?.price ?? 0),
+  billingCycle: normalizeBillingCycle(item?.billingCycle),
+  paymentCardName: item?.paymentCardName ?? item?.paymentMethodName ?? '',
+  paymentStartDate: item?.paymentStartDate ?? item?.startDate ?? '',
+  nextPaymentDate: item?.nextPaymentDate ?? '',
+  registeredAt: item?.registeredAt ?? item?.createdAt ?? '',
+  note: item?.note ?? '',
+  status: item?.status ?? ((item?.useYn === 'Y') ? 'ACTIVE' : 'PAUSED'),
+})
 
   const loadSubscriptions = async () => {
     loading.value = true
