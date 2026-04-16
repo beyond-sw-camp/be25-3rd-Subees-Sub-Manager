@@ -1,10 +1,13 @@
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router' //페이징 로드에 필요한
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import CommunityPostCard from '@/components/community/CommunityPostCard.vue'
 import { useCommunityStore } from '@/stores/community'
 
+const route = useRoute()
+const router = useRouter()
 const communityStore = useCommunityStore()
 const { successMessage, errorMessage, isLoading } = storeToRefs(communityStore)
 
@@ -12,7 +15,9 @@ const { successMessage, errorMessage, isLoading } = storeToRefs(communityStore)
 const scrapPagination = communityStore.scrapPagination
 
 onMounted(() => {
-  communityStore.fetchScraps(1)
+  // URL ?page=n 쿼리 파라미터 읽기. 없으면 기본 1페이지
+  const page = Number(route.query.page) || 1
+  communityStore.fetchScraps(page)
 })
 
 // 현재 페이지 기준 ±2 페이지 번호 목록
@@ -30,6 +35,8 @@ const pageNumbers = computed(() => {
 
 const goToPage = (page) => {
   if (page < 1 || page > scrapPagination.totalPages || page === scrapPagination.page) return
+  // URL 쿼리도 같이 업데이트 → 뒤로가기 시 해당 페이지로 복귀 가능
+  router.push({ query: { page } })
   communityStore.fetchScraps(page)
 }
 
@@ -126,9 +133,9 @@ const handleCancelScrap = async (postId) => {
         </div>
 
         <!-- 전체 스크랩 수 -->
-        <p v-if="scrapPagination.totalCount > 0" class="text-center text-xs text-neutral-400">
+        <!-- <p v-if="scrapPagination.totalCount > 0" class="text-center text-xs text-neutral-400">
           전체 {{ scrapPagination.totalCount }}개 · {{ scrapPagination.page }} / {{ scrapPagination.totalPages }} 페이지
-        </p>
+        </p> -->
       </section>
 
       <!-- 스크랩 없음 -->
