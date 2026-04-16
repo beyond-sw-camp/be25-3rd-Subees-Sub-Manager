@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import SubscriptionFilters from '@/components/subscriptions/SubscriptionFilters.vue'
@@ -56,6 +56,47 @@ const cancelDelete = () => {
   pendingDeleteId.value = null
   showDeleteConfirm.value = false
 }
+
+const PAGE_SIZE = 5
+const currentPage = ref(1)
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredSubscriptions.value.length / PAGE_SIZE))
+})
+
+const paginatedSubscriptions = computed(() => {
+  const startIndex = (currentPage.value - 1) * PAGE_SIZE
+  const endIndex = startIndex + PAGE_SIZE
+  return filteredSubscriptions.value.slice(startIndex, endIndex)
+})
+
+const goToPreviousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1
+  }
+}
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1
+  }
+}
+
+watch(
+  () => filteredSubscriptions.value.length,
+  () => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
+  }
+)
+
+watch(
+  () => [filters.value.query, filters.value.categoryName, filters.value.sortBy],
+  () => {
+    currentPage.value = 1
+  }
+)
 </script>
 
 <template>
@@ -123,12 +164,38 @@ const cancelDelete = () => {
 
           <div v-if="filteredSubscriptions.length" class="mt-5 grid gap-4">
             <SubscriptionListCard
-              v-for="item in filteredSubscriptions"
+              v-for="item in paginatedSubscriptions"
               :key="item.subscriptionId"
               :item="item"
               :is-selected="selectedSubscription?.subscriptionId === item.subscriptionId"
               @select="subscriptionsStore.selectSubscription"
             />
+          </div>
+          <div
+            v-if="filteredSubscriptions.length > PAGE_SIZE"
+            class="mt-6 flex items-center justify-center gap-3"
+          >
+            <button
+              type="button"
+              class="secondary-button !min-h-[44px] !px-4 disabled:opacity-40"
+              :disabled="currentPage === 1"
+              @click="goToPreviousPage"
+            >
+              이전
+            </button>
+
+            <div class="rounded-full border px-4 py-2 text-sm font-bold">
+              {{ currentPage }} / {{ totalPages }}
+            </div>
+
+            <button
+              type="button"
+              class="secondary-button !min-h-[44px] !px-4 disabled:opacity-40"
+              :disabled="currentPage === totalPages"
+              @click="goToNextPage"
+            >
+              다음
+            </button>
           </div>
 
           <AppStatePanel

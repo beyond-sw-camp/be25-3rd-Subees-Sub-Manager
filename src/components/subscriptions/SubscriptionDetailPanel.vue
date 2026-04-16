@@ -11,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['save', 'delete', 'toggle-status'])
 
 const isEditing = ref(false)
+const displayItem = ref(null)
 const paymentCardsStore = usePaymentCardsStore()
 const { cardOptions } = storeToRefs(paymentCardsStore)
 
@@ -45,10 +46,17 @@ const syncForm = (item) => {
 watch(
   () => props.item,
   (item) => {
-    syncForm(item)
+    if (!item?.subscriptionId) return
+
+    displayItem.value = {
+      ...displayItem.value,
+      ...item,
+    }
+
+    syncForm(displayItem.value)
     isEditing.value = false
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
 const formatCurrency = (value) =>
@@ -89,14 +97,14 @@ const toggleStatus = () => {
 
 <template>
   <section class="shell-card p-6 md:p-7">
-    <template v-if="item">
-      <div class="flex items-start gap-4 border-b border-[rgba(46,34,10,0.08)] pb-5">
+    <template v-if="displayItem && Object.keys(displayItem).length">      
+      <div class="flex items-center gap-4 border-b border-[rgba(46,34,10,0.08)] pb-5">
         <div class="grid h-16 w-16 place-items-center rounded-[22px] border border-[rgba(46,34,10,0.06)] bg-white">
           <AppAsset
             type="service"
-            :value="item.subscriptionName"
+            :value="displayItem.subscriptionName"
             secondary-type="category"
-            :secondary-value="item.categoryName"
+            :secondary-value="displayItem.categoryName"
             fallback="sparkles"
             :size="22"
             wrapper-class="inline-flex items-center justify-center"
@@ -108,27 +116,21 @@ const toggleStatus = () => {
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <p class="text-sm font-semibold text-[#8A6A00]">구독 상세</p>
-            <span
-              class="rounded-full px-3 py-1 text-[11px] font-extrabold ring-1"
-              :class="item.status === 'ACTIVE'
-                ? 'bg-[rgba(242,210,33,0.16)] text-[#8A6A00] ring-[rgba(242,210,33,0.2)]'
-                : 'bg-[rgba(46,34,10,0.06)] text-neutral-500 ring-[rgba(46,34,10,0.08)]'"
-            >
-              {{ item.status === 'ACTIVE' ? '활성' : '일시정지' }}
-            </span>
+
           </div>
 
           <h2 class="mt-2 text-[24px] font-bold tracking-[-0.03em] text-neutral-900">
-            {{ item.subscriptionName }}
+            {{ displayItem.subscriptionName }}
           </h2>
 
           <p class="mt-2 text-sm leading-6 text-neutral-500">
-            항목 상세, 수정, 삭제, 상태 전환까지 같은 패널에서 처리할 수 있습니다.
+            항목 상세, 수정, 삭제를 해당 페이지에서  처리할 수 있습니다.
           </p>
         </div>
       </div>
 
       <div v-if="!isEditing" class="mt-5 grid gap-4">
+        <!--
         <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-white px-5 py-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -149,6 +151,7 @@ const toggleStatus = () => {
             정기 결제를 잠시 멈추거나 다시 활성화해 목록과 캘린더 노출 상태를 바로 조정할 수 있습니다.
           </p>
         </div>
+        -->
 
         <div class="grid gap-3 md:grid-cols-2">
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
@@ -156,20 +159,20 @@ const toggleStatus = () => {
             <div class="mt-2 flex items-center gap-3">
               <AppAsset
                 type="category"
-                :value="item.categoryName"
+                :value="displayItem.categoryName"
                 fallback="grid"
                 :size="18"
                 wrapper-class="inline-flex items-center justify-center"
                 image-class="h-8 w-8 rounded-lg bg-white p-1 ring-1 ring-[rgba(46,34,10,0.08)] object-contain"
                 icon-class="text-[#8A6A00]"
               />
-              <p class="text-base font-bold text-neutral-900">{{ item.categoryName }}</p>
+              <p class="text-base font-bold text-neutral-900">{{ displayItem.categoryName }}</p>
             </div>
           </div>
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">결제 금액</p>
-            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatCurrency(item.paymentAmount) }}</p>
+            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatCurrency(displayItem.paymentAmount) }}</p>
           </div>
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
@@ -177,7 +180,7 @@ const toggleStatus = () => {
             <div class="mt-2 flex items-center gap-3">
               <AppAsset
                 type="card"
-                :value="item.paymentCardName"
+                :value="displayItem.paymentCardName || 'default'"
                 fallback="creditcard"
                 :size="18"
                 wrapper-class="inline-flex items-center justify-center"
@@ -185,7 +188,7 @@ const toggleStatus = () => {
                 icon-class="text-[#8A6A00]"
                 badge-class="inline-flex min-w-[52px] items-center justify-center rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
               />
-              <p class="text-base font-bold text-neutral-900">{{ item.paymentCardName }}</p>
+              <p class="text-base font-bold text-neutral-900">{{ displayItem.paymentCardName || '-' }}</p>
             </div>
           </div>
 
@@ -195,32 +198,35 @@ const toggleStatus = () => {
           </div>
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">등록일</p>
-            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatDate(item.registeredAt || item.paymentStartDate) }}</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">시작일</p>
+            <p class="mt-2 text-base font-bold text-neutral-900">
+              {{ displayItem.paymentStartDate || displayItem.startDate || displayItem.registeredAt || displayItem.createdAt
+                ? formatDate(displayItem.paymentStartDate || displayItem.startDate || displayItem.registeredAt || displayItem.createdAt)
+                : '-' }}
+            </p>          
           </div>
 
           <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">다음 결제일</p>
-            <p class="mt-2 text-base font-bold text-neutral-900">{{ formatDate(item.nextPaymentDate) }}</p>
+            <p class="mt-2 text-base font-bold text-neutral-900">{{ displayItem.nextPaymentDate ? formatDate(displayItem.nextPaymentDate) : '-' }}</p>
           </div>
         </div>
 
+        <!--
         <div class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-white px-5 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">메모</p>
           <p class="mt-2 text-sm leading-7 text-neutral-700">
             {{ item.note || '입력된 메모가 없습니다.' }}
           </p>
         </div>
-
+-->
         <div class="flex flex-wrap gap-3 pt-1">
           <button type="button" class="primary-button" @click="isEditing = true">수정</button>
-          <button type="button" class="secondary-button" @click="toggleStatus">
-            {{ item.status === 'ACTIVE' ? '일시정지' : '다시 활성화' }}
-          </button>
+
           <button
             type="button"
             class="secondary-button text-danger hover:bg-[rgba(186,107,82,0.08)]"
-            @click="emit('delete', item.subscriptionId)"
+            @click="emit('delete', displayItem.subscriptionId)"
           >
             삭제
           </button>
@@ -280,6 +286,7 @@ const toggleStatus = () => {
           <p class="mt-2">{{ cycleLabel }}</p>
         </div>
 
+        <!--
         <div>
           <label class="form-label">메모</label>
           <textarea
@@ -289,6 +296,7 @@ const toggleStatus = () => {
           ></textarea>
         </div>
 
+        -->
         <div class="flex flex-wrap gap-3 pt-1">
           <button type="button" class="primary-button" @click="save">저장</button>
           <button type="button" class="secondary-button" @click="cancelEdit">취소</button>

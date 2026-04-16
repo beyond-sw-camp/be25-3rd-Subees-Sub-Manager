@@ -33,8 +33,16 @@ const mapSubscription = (item) => ({
   paymentAmount: Number(item?.paymentAmount ?? item?.price ?? 0),
   billingCycle: normalizeBillingCycle(item?.billingCycle),
   paymentCardName: item?.paymentCardName ?? item?.paymentMethodName ?? '',
-  paymentStartDate: item?.paymentStartDate ?? item?.startDate ?? '',
-  nextPaymentDate: item?.nextPaymentDate ?? '',
+  paymentCardName:
+  item?.paymentCardName ??
+  item?.paymentMethodName ??
+  item?.paymentMethod?.name ??
+  '',
+
+nextPaymentDate:
+  item?.nextPaymentDate ??
+  item?.targetDate ??
+  '',
   registeredAt: item?.registeredAt ?? item?.createdAt ?? '',
   note: item?.note ?? '',
   status: item?.status ?? ((item?.useYn === 'Y') ? 'ACTIVE' : 'PAUSED'),
@@ -63,8 +71,11 @@ const mapSubscription = (item) => ({
   const selectSubscription = async (item) => {
     try {
       const response = await fetchSubscriptionDetailApi(item.subscriptionId)
-      const detail = response.data?.data ?? item
-      selectedSubscription.value = mapSubscription(detail)
+      const detail = response.data?.data ?? {}
+      selectedSubscription.value = mapSubscription({
+        ...item,
+        ...detail,
+      })
     } catch (e) {
       console.error(e)
       selectedSubscription.value = mapSubscription(item)

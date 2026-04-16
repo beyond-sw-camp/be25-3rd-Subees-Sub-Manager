@@ -111,9 +111,13 @@ const handleSelect = () => {
                 </span>
               </p>
               <p>
-                시작일 :
+              시작일 :
                 <span class="font-semibold text-neutral-700">
-                  {{ formatDate(item.paymentStartDate) }}
+                  {{
+                    item.paymentStartDate || item.startDate || item.registeredAt || item.createdAt
+                      ? formatDate(item.paymentStartDate || item.startDate || item.registeredAt || item.createdAt)
+                      : '-'
+                  }}
                 </span>
               </p>
             </div>
