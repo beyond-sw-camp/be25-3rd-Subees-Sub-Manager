@@ -11,10 +11,58 @@ const { cards, cardCount } = storeToRefs(paymentCardsStore)
 const isEditing = ref(false)
 const showDeleteConfirm = ref(false)
 const pendingDeleteId = ref(null)
+const originalEditValue = ref(null)
+
+const noticeTimer = ref(null)
+const notice = reactive({
+  show: false,
+  type: 'success', // success | error | warning | info
+  message: '',
+})
+
+const showNotice = ({ type = 'success', message = '' }) => {
+  notice.show = true
+  notice.type = type
+  notice.message = message
+
+  if (noticeTimer.value) {
+    clearTimeout(noticeTimer.value)
+  }
+
+  noticeTimer.value = setTimeout(() => {
+    notice.show = false
+    notice.message = ''
+  }, 2500)
+}
+
+const closeNotice = () => {
+  notice.show = false
+  notice.message = ''
+
+  if (noticeTimer.value) {
+    clearTimeout(noticeTimer.value)
+    noticeTimer.value = null
+  }
+}
+
+const noticeClass = computed(() => {
+  if (notice.type === 'error') {
+    return 'border-[#F3B3A6] bg-[#FFF1ED] text-[#C65B38]'
+  }
+
+  if (notice.type === 'warning') {
+    return 'border-[#F0D98A] bg-[#FFF8DD] text-[#8A6A00]'
+  }
+
+  if (notice.type === 'info') {
+    return 'border-[#BFD7FF] bg-[#EEF5FF] text-[#315EA8]'
+  }
+
+  return 'border-[#9FE3C8] bg-[#EAFBF3] text-[#147A55]'
+})
 
 /**
  * 선택 카드 목록
- * 백엔드에 "기본 카드 목록 조회 API" 필요
  */
 const predefinedCardOptions = ref([
   { cardId: 1, cardCompany: '신한카드' },
@@ -28,27 +76,25 @@ const predefinedCardOptions = ref([
 ])
 
 const cardImageMap = {
-  1: 'sin', // 신한카드
-  2: 'kb',  // 국민카드
-  3: 'nh',  // 농협카드
-  4: 'u',   // 우리카드
-  5: 'han', // 하나카드
-  6: 'sam', // 삼성카드
-  7: null,  // 현대카드 넣어야 함
-  8: 'lot', // 롯데카드
+  1: 'sin',
+  2: 'kb',
+  3: 'nh',
+  4: 'u',
+  5: 'han',
+  6: 'sam',
+  7: 'hun',
+  8: 'lot',
 }
 
 const getCardImagePath = (card) => {
   if (!card.cardId) return null
-
   const imageName = cardImageMap[card.cardId]
   return imageName ? `/image/card/${imageName}.png` : null
 }
 
-
 const form = reactive({
   paymentId: null,
-  cardType: 'CUSTOM', // CUSTOM | SELECT
+  cardType: 'CUSTOM',
   cardId: null,
   customCardCompany: '',
   cardName: '',
@@ -71,21 +117,18 @@ const resetForm = () => {
   isEditing.value = false
 }
 
-const isSelectedCard = (card) => {
-  return !!card.cardId
-}
+const isSelectedCard = (card) => !!card.cardId
 
 const displayProviderName = (card) => {
   if (card.cardId) {
     const matched = predefinedCardOptions.value.find(
-      (item) => item.cardId === card.cardId
+      (item) => item.cardId === card.cardId,
     )
     return matched?.cardCompany || '카드'
   }
 
   return card.customCardCompany || '직접 입력 카드'
 }
-
 
 const startEdit = (card) => {
   form.paymentId = card.paymentId ?? null
@@ -101,26 +144,39 @@ const startEdit = (card) => {
     form.customCardCompany = card.customCardCompany ?? ''
   }
 
+  originalEditValue.value = {
+    paymentId: card.paymentId ?? null,
+    cardType: card.cardId ? 'SELECT' : 'CUSTOM',
+    cardId: card.cardId ?? null,
+    customCardCompany: (card.customCardCompany ?? '').trim(),
+    cardName: (card.cardName ?? '').trim(),
+  }
+
   isEditing.value = true
 }
 
 const validateForm = () => {
-  if (form.cardType === 'SELECT') {
-    if (!form.cardId) {
-      alert('카드를 선택해주세요.')
-      return false
-    }
+  if (form.cardType === 'SELECT' && !form.cardId) {
+    showNotice({
+      type: 'warning',
+      message: '카드를 선택해주세요.',
+    })
+    return false
   }
 
-  if (form.cardType === 'CUSTOM') {
-    if (!form.customCardCompany.trim()) {
-      alert('카드사를 입력해주세요.')
-      return false
-    }
+  if (form.cardType === 'CUSTOM' && !form.customCardCompany.trim()) {
+    showNotice({
+      type: 'warning',
+      message: '카드사명을 입력해주세요.',
+    })
+    return false
   }
 
   if (!form.cardName.trim()) {
-    alert('카드 별칭을 입력해주세요.')
+    showNotice({
+      type: 'warning',
+      message: '카드 별칭을 입력해주세요.',
+    })
     return false
   }
 
@@ -149,17 +205,29 @@ const submitForm = async () => {
         paymentId: form.paymentId,
         ...payload,
       })
-      alert('카드 수정이 완료되었습니다.')
+
+      showNotice({
+        type: 'success',
+        message: '카드가 수정되었습니다.',
+      })
     } else {
       await paymentCardsStore.addCard(payload)
-      alert('카드 등록이 완료되었습니다.')
+
+      showNotice({
+        type: 'success',
+        message: '카드가 등록되었습니다.',
+      })
     }
 
     resetForm()
     await paymentCardsStore.fetchCards()
   } catch (error) {
     console.error('카드 저장 실패:', error)
-    alert(error?.response?.data?.message || '카드 저장 중 오류가 발생했습니다.')
+
+    showNotice({
+      type: 'error',
+      message: error?.message || '카드 저장 중 오류가 발생했습니다.',
+    })
   }
 }
 
@@ -182,10 +250,21 @@ const confirmDelete = async () => {
     showDeleteConfirm.value = false
 
     await paymentCardsStore.fetchCards()
-    alert('카드 삭제가 완료되었습니다.')
+
+    showNotice({
+      type: 'success',
+      message: '카드가 삭제되었습니다.',
+    })
   } catch (error) {
     console.error('카드 삭제 실패:', error)
-    alert(error?.response?.data?.message || '카드 삭제 중 오류가 발생했습니다.')
+
+    pendingDeleteId.value = null
+    showDeleteConfirm.value = false
+
+    showNotice({
+      type: 'error',
+      message: error?.message || '카드 삭제 중 오류가 발생했습니다.',
+    })
   }
 }
 
@@ -199,6 +278,11 @@ onMounted(async () => {
     await paymentCardsStore.fetchCards()
   } catch (error) {
     console.error('카드 데이터 조회 실패:', error)
+
+    showNotice({
+      type: 'error',
+      message: error?.message || '카드 데이터를 불러오지 못했습니다.',
+    })
   }
 })
 </script>
@@ -235,6 +319,23 @@ onMounted(async () => {
           </div>
         </div>
       </section>
+
+          <div
+        v-if="notice.show"
+        :class="noticeClass"
+        class="rounded-[22px] border px-5 py-4 text-sm font-semibold shadow-sm transition"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <p>{{ notice.message }}</p>
+          <button
+            type="button"
+            class="shrink-0 text-xs font-bold opacity-70 hover:opacity-100"
+            @click="closeNotice"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
 
       <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div class="section-card">
@@ -427,6 +528,31 @@ onMounted(async () => {
           </button>
         </div>
       </div>
+
+      <div
+  v-if="showNoticeModal"
+  class="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-900/40 px-4"
+>
+  <div class="w-full max-w-md rounded-[32px] bg-[rgba(255,253,247,0.98)] p-6 shadow-[0_24px_80px_rgba(46,34,10,0.18)]">
+    <p class="text-sm font-semibold" :class="noticeTitleClass">
+      {{ notice.title }}
+    </p>
+
+    <p class="mt-4 text-base leading-7 text-neutral-700 whitespace-pre-line">
+      {{ notice.message }}
+    </p>
+
+    <div class="mt-8 flex justify-end">
+      <button
+        type="button"
+        class="primary-button !min-h-11 !px-6"
+        @click="closeNotice"
+      >
+        {{ notice.buttonText }}
+      </button>
+    </div>
+  </div>
+</div>
     </div>
   </AppShell>
 </template>
