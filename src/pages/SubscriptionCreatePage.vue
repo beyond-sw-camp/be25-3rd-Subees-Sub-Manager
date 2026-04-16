@@ -21,18 +21,17 @@ const subscriptionFormStore = useSubscriptionFormStore()
 const paymentCardsStore = usePaymentCardsStore()
 const { currentStep, subscriptionForm, resolvedSubscriptionName } = storeToRefs(subscriptionFormStore)
 const showCardPicker = ref(false)
+const showCardDropdown = ref(false)
 const steps = [1, 2, 3, 4]
 const categories = ref([])
 const services = ref([])
 const cardOptions = ref([])
+const showSuccessModal = ref(false)
 
 const requestPayload = computed(() => ({
   categoryId: subscriptionForm.value.categoryId,
   itemId: subscriptionForm.value.itemId,
-  itemName:
-    subscriptionForm.value.itemId === null
-      ? subscriptionForm.value.customSubscriptionName
-      : null,
+  itemName: null,
   paymentId: subscriptionForm.value.paymentCardId,
   price: Number(subscriptionForm.value.paymentAmount),
   billingCycle: subscriptionForm.value.billingCycle,
@@ -46,13 +45,31 @@ onMounted(async () => {
 
   // 카드 조회
   const cardRes = await getPaymentCard()
-  cardOptions.value = cardRes.data.data
+  console.log('카드 응답 전체:', cardRes)
+  console.log('카드 응답 data:', cardRes.data)
+
+  const rawCards = cardRes.data?.data ?? cardRes.data ?? []
+
+  cardOptions.value = rawCards.map((card) => ({
+    paymentId: card.paymentId ?? card.cardId ?? card.id,
+    paymentCardName: card.paymentCardName ?? card.cardName ?? card.name,
+  }))
+
+  console.log('최종 cardOptions:', cardOptions.value)
 })
 
 const billingCycles = [
   { label: '매월 결제', value: '1M' },
   { label: '매년 결제', value: '1Y' },
 ]
+
+const selectService = (service) => {
+  subscriptionFormStore.setSubscription(
+    service.itemId,
+    service.itemName,
+    service.price
+  )
+}
 
 
 
@@ -67,7 +84,7 @@ const prompt = computed(() => {
 
 const stepGuide = computed(() => {
   if (currentStep.value === 1) return 'OTT, 음악, AI처럼 먼저 큰 종류를 고르면 다음 단계 서비스 목록이 바로 정리됩니다.'
-  if (currentStep.value === 2) return '자주 쓰는 서비스가 보이면 바로 선택하고, 없으면 직접 입력으로 넘어가면 됩니다.'
+  if (currentStep.value === 2) return '자주 쓰는 서비스가 보이면 바로 선택해주세요.'
   if (currentStep.value === 3) return '금액, 주기, 카드, 시작일만 채우면 등록에 필요한 핵심 정보는 끝납니다.'
   return '마지막 확인에서 이름·금액·카드·결제일만 다시 보고 저장하면 됩니다.'
 })
@@ -79,32 +96,22 @@ const selectedCategory = computed(() => {
 })
 
 const selectedCategoryLabel = computed(() => selectedCategory.value.categoryName || '')
-const customServiceMode = computed(() => {
-  return subscriptionForm.value.itemId === null
-})
-const selectedServiceLabel = computed(() => {
-  if (subscriptionForm.value.itemId === null) {
-    return subscriptionForm.value.customSubscriptionName || '직접 입력 서비스'
-  }
 
+const selectedServiceLabel = computed(() => {
   const found = services.value.find(
     (item) => item.itemId === subscriptionForm.value.itemId
   )
   return found?.itemName || ''
 })
-const serviceInitial = computed(() => selectedServiceLabel.value.trim().slice(0, 1).toUpperCase() || '?')
 
-const serviceOptions = computed(() => [
-  ...services.value,
-  { itemId: null, itemName: '직접 입력' }
-])
+const serviceInitial = computed(() => selectedServiceLabel.value.trim().slice(0, 1).toUpperCase() || '?')
+const serviceOptions = computed(() => services.value)
 
 const isStepValid = computed(() => {
   if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryId)
   if (currentStep.value === 2) {
-    if (customServiceMode.value) return subscriptionForm.value.customSubscriptionName.trim().length > 0
-    return Boolean(subscriptionForm.value.itemId)
-  }
+  return Boolean(subscriptionForm.value.itemId)
+}
   if (currentStep.value === 3) {
     return Boolean(
       subscriptionForm.value.paymentAmount &&
@@ -125,23 +132,14 @@ const selectCategory = async (category) => {
   const res = await getSubscriptionItemByCategory(category.categoryId)
   services.value = res.data.data
 }
-const selectService = (service) => {
-  if (service.itemId === null) {
-    subscriptionFormStore.setSubscription(null, '', 0)
-  } else {
-    subscriptionFormStore.setSubscription(
-      service.itemId,
-      service.itemName,
-      service.price
-    )
-  }
-}
+
 
 const pickCard = (card) => {
   subscriptionFormStore.setPaymentCardId(card.paymentId)
+  subscriptionForm.value.paymentCardName = card.paymentCardName
+  showCardDropdown.value = false
   showCardPicker.value = false
 }
-
 const handleIconFileChange = (event) => {
   const file = event.target.files?.[0]
   subscriptionFormStore.setIconFileName(file?.name ?? '')
@@ -150,9 +148,52 @@ const handleIconFileChange = (event) => {
 const clearIconFile = () => {
   subscriptionFormStore.setIconFileName('')
 }
-
 const goNext = () => {
-  if (!isStepValid.value) return
+  if (currentStep.value === 1) {
+    if (!subscriptionForm.value.categoryId) {
+      window.alert('카테고리를 선택해주세요.')
+      return
+    }
+  }
+
+  if (currentStep.value === 2) {
+    if (!subscriptionForm.value.itemId) {
+      window.alert('구독 서비스를 선택해주세요.')
+      return
+    }
+  }
+
+  if (currentStep.value === 3) {
+    if (
+      subscriptionForm.value.paymentAmount === '' ||
+      subscriptionForm.value.paymentAmount === null ||
+      subscriptionForm.value.paymentAmount === undefined
+    ) {
+      window.alert('결제 금액을 입력해주세요.')
+      return
+    }
+
+    if (Number(subscriptionForm.value.paymentAmount) <= 0) {
+      window.alert('결제 금액은 0원보다 커야 합니다.')
+      return
+    }
+
+    if (!subscriptionForm.value.billingCycle) {
+      window.alert('결제 주기를 선택해주세요.')
+      return
+    }
+
+    if (!subscriptionForm.value.paymentCardId) {
+      window.alert('결제 카드를 선택해주세요.')
+      return
+    }
+
+    if (!subscriptionForm.value.paymentStartDate) {
+      window.alert('결제 시작일을 선택해주세요.')
+      return
+    }
+  }
+
   subscriptionFormStore.nextStep()
 }
 
@@ -163,16 +204,17 @@ const submitDraft = async () => {
     const response = await createSubscription(requestPayload.value)
 
     console.log('등록 성공:', response.data)
-    window.alert('구독이 등록되었습니다.')
-    router.push('/subscriptions')
+    showSuccessModal.value = true
   } catch (error) {
     console.error('등록 실패:', error)
     console.error('응답 데이터:', error.response?.data)
     window.alert(error.response?.data?.message || '구독 등록에 실패했습니다.')
   }
 }
-
-
+const closeSuccessModal = () => {
+  showSuccessModal.value = false
+  router.push('/subscriptions')
+}
 </script>
 
 <template>
@@ -204,6 +246,7 @@ const submitDraft = async () => {
           <p class="text-xs font-extrabold uppercase tracking-[0.12em] text-neutral-300">등록 안내</p>
           <p class="mt-2 text-sm font-bold text-neutral-900">{{ stepGuide }}</p>
         </div>
+      
 
         <div v-if="currentStep === 1" class="wizard__block">
           <div class="wizard__selection">
@@ -228,9 +271,9 @@ const submitDraft = async () => {
                   type="category"
                   :value="category.categoryName"
                   fallback="grid"
-                  :size="18"
+                  :size="72"
                   wrapper-class="inline-flex items-center justify-center"
-                  image-class="h-24 w-24 object-contain lg:h-28 lg:w-28 xl:h-32 xl:w-32"
+                  image-class="h-32 w-32 object-contain lg:h-36 lg:w-36 xl:h-40 xl:w-40"
                   icon-class="text-[#8A6A00]"
                 />
               </div>
@@ -242,13 +285,14 @@ const submitDraft = async () => {
         </div>
 
         <div v-else-if="currentStep === 2" class="wizard__block">
+          
           <div class="wizard__selection">
-          <div class="wizard__selection-label">현재 선택한 종류</div>
+          <div class="wizard__selection-label">현재 선택한 서비스</div>
           <div class="wizard__selection-value">
-            {{ selectedCategoryLabel || '카테고리를 선택해주세요.' }}
+            {{ selectedServiceLabel || '서비스를 선택해주세요.' }}
           </div>
           <div class="text-sm text-neutral-500">
-            선택한 카테고리는 다음 단계 서비스 목록에 바로 반영돼요.
+            선택한 서비스가 다음 단계와 최종 확인 화면에 반영돼요.
           </div>
         </div>
 
@@ -276,6 +320,7 @@ const submitDraft = async () => {
               <span>{{ service.itemName }}</span>
             </button>
           </div>
+
 
           <div v-if="customServiceMode" class="field-block">
             <label class="form-label">서비스명 직접입력</label>
@@ -315,12 +360,18 @@ const submitDraft = async () => {
             </div>
           </div>
         </div>
-
+              
         <div v-else-if="currentStep === 3" class="wizard__block">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">결제 금액</label>
-              <input v-model="subscriptionForm.paymentAmount" type="number" min="0" class="form-input mt-2" placeholder="예: 17000" />
+              <input
+                v-model="subscriptionForm.paymentAmount"
+                type="number"
+                min="0"
+                class="form-input mt-2"
+                placeholder="예: 17000"
+              />
             </div>
 
             <div>
@@ -346,14 +397,26 @@ const submitDraft = async () => {
                 <label class="form-label">결제 카드</label>
                 <div class="flex items-center gap-3">
                   <RouterLink to="/payment-cards" class="wizard__pick-link">카드 관리</RouterLink>
-                  <button type="button" class="wizard__pick-link" @click="showCardPicker = !showCardPicker">이미지로 선택</button>
+                  <button
+                    type="button"
+                    class="wizard__pick-link"
+                    @click="showCardPicker = !showCardPicker"
+                  >
+                    이미지로 선택
+                  </button>
                 </div>
               </div>
-              <div class="wizard__card-input mt-2">
-                <div class="wizard__card-thumb">
-                  <AppAsset
+
+          <div class="wizard__card-select-wrap mt-2">
+            <button
+              type="button"
+              class="wizard__card-input w-full"
+              @click="showCardDropdown = !showCardDropdown"
+            >
+              <div class="wizard__card-thumb">
+                <AppAsset
                   type="card"
-                  :value="subscriptionForm.paymentCardName === '직접 입력' ? subscriptionForm.customPaymentCardName : subscriptionForm.paymentCardName"
+                  :value="subscriptionForm.paymentCardName"
                   fallback="creditcard"
                   :size="18"
                   wrapper-class="inline-flex items-center justify-center"
@@ -361,52 +424,72 @@ const submitDraft = async () => {
                   icon-class="text-[#8A6A00]"
                   badge-class="inline-flex min-w-[44px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
                 />
-                </div>
-                <input
-                  v-if="subscriptionForm.paymentCardName !== '직접 입력'"
-                  :value="subscriptionForm.paymentCardName"
-                  class="form-input wizard__card-field"
-                  placeholder="예: 현대카드"
-                  readonly
-                />
-                <input
-                  v-else
-                  v-model="subscriptionForm.customPaymentCardName"
-                  class="form-input wizard__card-field"
-                  placeholder="예: 카카오뱅크 체크카드"
-                />
               </div>
+
+              <div class="wizard__card-placeholder">
+                {{ subscriptionForm.paymentCardName || '예: 현대카드' }}
+              </div>
+
+              <div class="wizard__card-arrow"></div>
+            </button>
+
+            <div v-if="showCardDropdown" class="wizard__card-dropdown">
+            <button
+              v-for="card in cardOptions"
+              :key="card.paymentId"
+              type="button"
+              class="wizard__card-option"
+              @click="pickCard(card)"
+            >
+              {{ card.paymentCardName }}
+            </button>
+
+            <div v-if="cardOptions.length === 0" class="wizard__card-empty">
+              등록된 카드가 없습니다.
+            </div>
+          </div>
+          </div>
             </div>
 
             <div>
               <label class="form-label">결제 시작일</label>
-              <input v-model="subscriptionForm.paymentStartDate" type="date" class="form-input mt-2" />
+              <input
+                v-model="subscriptionForm.paymentStartDate"
+                type="date"
+                class="form-input mt-2 wizard__date-field"
+              />
             </div>
           </div>
 
-          <div v-if="showCardPicker" class="picker-grid mt-4">
-            <button
-              v-for="card in [...cardOptions, '직접 입력']"
-              :key="card"
-              type="button"
-              class="picker-card"
-              :class="{ 'picker-card--active': subscriptionForm.paymentCardName === card }"
-              @click="pickCard(card)"
-            >
-              <div class="picker-card__img">
-                <AppAsset
-                type="card"
-                :value="card"
-                fallback="creditcard"
-                :size="16"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-12 w-12 object-contain"
-                icon-class="text-[#8A6A00]"
-                badge-class="inline-flex min-w-[48px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
-              />
-              </div>
-              <div class="picker-card__label">{{ card }}</div>
-            </button>
+          <div v-if="showCardPicker">
+            <div v-if="cardOptions.length === 0" class="text-sm text-neutral-500 mt-3">
+              등록된 카드가 없습니다. 카드 관리에서 먼저 카드를 등록해주세요.
+            </div>
+
+            <div v-else class="picker-grid mt-4">
+              <button
+                v-for="card in cardOptions"
+                :key="card.paymentId"
+                type="button"
+                class="picker-card"
+                :class="{ 'picker-card--active': subscriptionForm.paymentCardId === card.paymentId }"
+                @click="pickCard(card)"
+              >
+                <div class="picker-card__img">
+                  <AppAsset
+                    type="card"
+                    :value="card.paymentCardName"
+                    fallback="creditcard"
+                    :size="16"
+                    wrapper-class="inline-flex items-center justify-center"
+                    image-class="h-12 w-12 object-contain"
+                    icon-class="text-[#8A6A00]"
+                    badge-class="inline-flex min-w-[48px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
+                  />
+                </div>
+                <div class="picker-card__label">{{ card.paymentCardName }}</div>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -415,19 +498,21 @@ const submitDraft = async () => {
             <div class="wizard__review-top">
               <div class="wizard__review-icon">
                 <AppAsset
-                type="service"
-                :value="selectedServiceLabel"
-                secondary-type="category"
-                :secondary-value="subscriptionForm.categoryName"
-                fallback="sparkles"
-                :size="20"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-20 w-20 object-contain"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="service"
+                  :value="selectedServiceLabel || resolvedSubscriptionName"
+                  secondary-type="category"
+                  :secondary-value="selectedCategoryLabel"
+                  fallback="sparkles"
+                  :size="20"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-20 w-20 object-contain"
+                  icon-class="text-[#8A6A00]"
+                />
               </div>
               <div>
-                <div class="wizard__review-name">{{ selectedServiceLabel }}</div>
+                <div class="wizard__review-name">
+                  {{ selectedServiceLabel || resolvedSubscriptionName || '선택한 서비스' }}
+                </div>
                 <div class="text-sm text-neutral-500">{{ selectedCategoryLabel }}</div>
               </div>
             </div>
@@ -437,6 +522,7 @@ const submitDraft = async () => {
             <div class="wizard__row"><span>카드</span><strong>{{ subscriptionForm.paymentCardName === '직접 입력' ? (subscriptionForm.customPaymentCardName || '직접 입력 예정') : (subscriptionForm.paymentCardName || '미등록') }}</strong></div>
           </div>
 
+          <!--
           <div>
             <label class="form-label">메모를 남길 수 있어요 (선택)</label>
             <textarea
@@ -446,20 +532,39 @@ const submitDraft = async () => {
               placeholder="예: 가족과 공유 중, 학생 할인 확인 필요"
             ></textarea>
           </div>
-
+          -->
+          <!--
           <div class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-neutral-900 p-4 text-xs leading-6 text-white">
             <div class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/60">API payload preview</div>
             <pre class="overflow-x-auto whitespace-pre-wrap break-all">{{ JSON.stringify(requestPayload, null, 2) }}</pre>
           </div>
+        
+        -->
         </div>
 
         <div class="wizard__actions">
           <button v-if="currentStep > 1" type="button" class="secondary-button !w-full" @click="subscriptionFormStore.prevStep()">이전</button>
-          <button v-if="currentStep < 4" type="button" class="primary-button !w-full" :disabled="!isStepValid" @click="goNext">다음</button>
+          <button v-if="currentStep < 4" type="button" class="primary-button !w-full" @click="goNext">다음
+</button>
           <button v-else type="button" class="primary-button !w-full" @click="submitDraft">구독 추가하기</button>
         </div>
       </div>
     </section>
+    <div v-if="showSuccessModal" class="modal-overlay">
+  <div class="success-modal">
+    <div class="success-modal__icon">✓</div>
+    <div class="success-modal__title">구독이 추가되었습니다</div>
+    <div class="success-modal__desc">
+      등록한 구독이 목록에 반영되었어요.
+    </div>
+
+    <div class="success-modal__actions">
+      <button type="button" class="primary-button !w-full" @click="closeSuccessModal">
+        확인
+      </button>
+    </div>
+  </div>
+</div>
   </AppShell>
 </template>
 
@@ -775,6 +880,149 @@ const submitDraft = async () => {
   font-size: 13px;
   font-weight: 800;
   color: #1e180d;
+}
+
+.wizard__card-select-wrap {
+  position: relative;
+}
+/* 카드 선택 박스 */
+.wizard__card-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 69px;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  border-radius: 22px;
+  background: rgba(247, 241, 227, 0.78);
+}
+
+.wizard__card-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  text-align: left;
+  color: #61563d;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 드롭다운 화살표 모양 */
+.wizard__card-arrow {
+  margin-left: auto;
+  margin-right: 20px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #8a6a00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+.wizard__card-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  border-radius: 18px;
+  background: #fffdf7;
+  box-shadow: 0 10px 24px rgba(46, 34, 10, 0.08);
+  padding: 8px;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+}
+
+.wizard__card-option {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e180d;
+  cursor: pointer;
+}
+
+.wizard__card-option:hover {
+  background: rgba(242, 210, 33, 0.12);
+}
+
+.wizard__card-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #8a7f67;
+}
+
+/* 그 날짜 입력 부분  */
+.wizard__date-field {
+  min-height: 69px;
+  border-radius: 22px;
+}
+
+/* 구독이 확인 되었습니다 팝업창 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 24, 13, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.success-modal {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 28px;
+  background: #fffdf7;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  box-shadow: 0 24px 60px rgba(46, 34, 10, 0.18);
+  padding: 28px 24px 22px;
+  display: grid;
+  gap: 14px;
+  text-align: center;
+}
+
+.success-modal__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(242, 210, 33, 0.18);
+  color: #8a6a00;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.success-modal__title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #1e180d;
+}
+
+.success-modal__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #61563d;
+}
+
+.success-modal__actions {
+  margin-top: 6px;
+  display: grid;
+  gap: 10px;
+}
+
+.success-modal__actions.two-buttons {
+  grid-template-columns: 1fr 1fr;
 }
 
 @media (max-width: 1280px) {
