@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import SubscriptionFilters from '@/components/subscriptions/SubscriptionFilters.vue'
@@ -16,10 +17,6 @@ onMounted(() => {
   subscriptionsStore.loadSubscriptions()
 })
 
-const { nickname } = storeToRefs(authStore)
-
-const displayNickname = computed(() => nickname.value || '회원')
-
 const {
   filters,
   categories,
@@ -27,7 +24,13 @@ const {
   selectedSubscription,
   totalCount,
   monthlyExpectedAmount,
+  paymentCards,
+  categoryOptions,
 } = storeToRefs(subscriptionsStore)
+
+const displayNickname = computed(() => {
+  return authStore.nickname || authStore.user?.nickname || '회원'
+})
 
 const showDeleteConfirm = ref(false)
 const pendingDeleteId = ref(null)
@@ -82,6 +85,13 @@ const goToNextPage = () => {
   }
 }
 
+const showFilteredEmptyState = computed(() => {
+  const hasQuery = filters.value.query.trim().length > 0
+  const hasCategoryFilter = filters.value.categoryName !== '전체'
+
+  return filteredSubscriptions.value.length === 0 && (hasQuery || hasCategoryFilter)
+})
+
 watch(
   () => filteredSubscriptions.value.length,
   () => {
@@ -98,6 +108,7 @@ watch(
   }
 )
 </script>
+
 
 <template>
   <AppShell title="hidden">
@@ -198,29 +209,30 @@ watch(
             </button>
           </div>
 
-          <AppStatePanel
-            v-else
-            class="mt-6"
-            title="조건에 맞는 구독이 없습니다"
-            description="검색어를 지우거나 카테고리를 전체로 바꾸면 다시 목록을 확인할 수 있습니다. 아직 구독을 등록하지 않았다면 첫 항목부터 추가해보세요."
-            icon="list"
-          >
-            <template #actions>
-              <RouterLink to="/subscriptions/new" class="primary-button">첫 구독 등록하기</RouterLink>
-              <button
-                type="button"
-                class="secondary-button"
-                @click="subscriptionsStore.setQuery(''); subscriptionsStore.setCategory('전체')"
-              >
-                필터 초기화
-              </button>
-            </template>
-          </AppStatePanel>
+        <AppStatePanel
+          v-else-if="showFilteredEmptyState"
+          class="mt-6"
+          title="조건에 맞는 구독이 없습니다"
+          description="검색어를 지우거나 카테고리를 전체로 바꾸면 다시 목록을 확인할 수 있습니다."
+          icon="list"
+        >
+          <template #actions>
+            <button
+              type="button"
+              class="secondary-button"
+              @click="subscriptionsStore.setQuery(''); subscriptionsStore.setCategory('전체')"
+            >
+              필터 초기화
+            </button>
+          </template>
+        </AppStatePanel>
         </div>
 
         <div class="xl:sticky xl:top-7 xl:self-start">
           <SubscriptionDetailPanel
             :item="selectedSubscription"
+            :card-options="paymentCards.map(card => card.displayName)"
+            :category-options="categoryOptions"
             @save="subscriptionsStore.updateSubscription"
             @delete="requestDelete"
             @toggle-status="subscriptionsStore.toggleSubscriptionStatus"

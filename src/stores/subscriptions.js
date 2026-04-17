@@ -5,11 +5,15 @@ import {
   getSubscriptionDetail as fetchSubscriptionDetailApi,
   updateSubscription as updateSubscriptionApi,
   deleteSubscription as deleteSubscriptionApi,
+  getSubscriptionCategory as fetchSubscriptionCategoriesApi,
+  getPaymentCard as fetchPaymentCardsApi,
 } from '@/api/subscription'
 
 export const useSubscriptionsStore = defineStore('subscriptions', () => {
   const subscriptions = ref([])
   const selectedSubscription = ref(null)
+  const categoryOptions = ref([])
+  const paymentCards = ref([])
 
   const filters = ref({
     query: '',
@@ -26,33 +30,56 @@ export const useSubscriptionsStore = defineStore('subscriptions', () => {
     return billingCycle || 'MONTHLY'
   }
 
-const mapSubscription = (item) => ({
-  subscriptionId: item?.subscriptionId ?? null,
-  categoryName: item?.categoryName ?? '',
-  subscriptionName: item?.subscriptionName ?? item?.itemName ?? '',
-  paymentAmount: Number(item?.paymentAmount ?? item?.price ?? 0),
-  billingCycle: normalizeBillingCycle(item?.billingCycle),
-  paymentCardName: item?.paymentCardName ?? item?.paymentMethodName ?? '',
-  paymentCardName:
-  item?.paymentCardName ??
-  item?.paymentMethodName ??
-  item?.paymentMethod?.name ??
-  '',
+  const mapCardDisplayName = (card) => {
+    if (!card) return ''
+    if (card.cardCompany) return `${card.cardCompany}(${card.cardName})`
+    return card.customCardCompany || ''
+  }
 
-nextPaymentDate:
-  item?.nextPaymentDate ??
-  item?.targetDate ??
-  '',
-  registeredAt: item?.registeredAt ?? item?.createdAt ?? '',
-  note: item?.note ?? '',
-  status: item?.status ?? ((item?.useYn === 'Y') ? 'ACTIVE' : 'PAUSED'),
-})
+  const mapSubscription = (item) => ({
+    subscriptionId: item?.subscriptionId ?? null,
+    categoryName: item?.categoryName ?? '',
+    subscriptionName: item?.subscriptionName ?? item?.itemName ?? '',
+    paymentAmount: Number(item?.paymentAmount ?? item?.price ?? 0),
+    billingCycle: normalizeBillingCycle(item?.billingCycle),
+    paymentCardName:
+      item?.paymentCardName ??
+      item?.paymentMethodName ??
+      item?.paymentMethod?.name ??
+      '',
+    paymentId: item?.paymentId ?? item?.paymentMethod?.id ?? null,
+    paymentStartDate:
+      item?.paymentStartDate ??
+      item?.startDate ??
+      item?.registeredAt ??
+      item?.createdAt ??
+      '',
+    nextPaymentDate: item?.nextPaymentDate ?? item?.targetDate ?? '',
+    registeredAt: item?.registeredAt ?? item?.createdAt ?? '',
+    note: item?.note ?? '',
+    status: item?.status ?? (item?.useYn === 'Y' ? 'ACTIVE' : 'PAUSED'),
+  })
+
+  const loadAuxiliaryData = async () => {
+    const [categoryResponse, cardResponse] = await Promise.all([
+      fetchSubscriptionCategoriesApi(),
+      fetchPaymentCardsApi(),
+    ])
+
+    categoryOptions.value = categoryResponse.data?.data ?? []
+    paymentCards.value = (cardResponse.data?.data ?? []).map((card) => ({
+      ...card,
+      displayName: mapCardDisplayName(card),
+    }))
+  }
 
   const loadSubscriptions = async () => {
     loading.value = true
     error.value = ''
 
     try {
+      await loadAuxiliaryData()
+
       const response = await fetchSubscriptionsApi()
       const list = response.data?.data ?? []
 
@@ -72,6 +99,7 @@ nextPaymentDate:
     try {
       const response = await fetchSubscriptionDetailApi(item.subscriptionId)
       const detail = response.data?.data ?? {}
+
       selectedSubscription.value = mapSubscription({
         ...item,
         ...detail,
@@ -146,16 +174,29 @@ nextPaymentDate:
   })
 
   const buildUpdatePayload = (payload) => {
+    const matchedCategory = categoryOptions.value.find(
+      (category) => category.categoryName === payload.categoryName
+    )
+
+    const matchedCard = paymentCards.value.find(
+      (card) => card.displayName === payload.paymentCardName
+    )
+
+    if (!matchedCategory) {
+      throw new Error('일치하는 카테고리를 찾을 수 없습니다.')
+    }
+
+    if (!matchedCard) {
+      throw new Error('일치하는 결제 카드를 찾을 수 없습니다.')
+    }
+
     return {
-      categoryName: payload.categoryName,
-      subscriptionName: payload.subscriptionName,
-      paymentAmount: Number(payload.paymentAmount || 0),
+      categoryId: matchedCategory.categoryId,
+      itemName: payload.subscriptionName?.trim(),
+      price: Number(payload.paymentAmount || 0),
       billingCycle: payload.billingCycle === 'YEARLY' ? '1Y' : '1M',
-      paymentCardName: payload.paymentCardName,
-      paymentStartDate: payload.paymentStartDate,
-      nextPaymentDate: payload.nextPaymentDate,
-      note: payload.note,
-      status: payload.status,
+      startDate: payload.paymentStartDate,
+      paymentId: matchedCard.paymentId,
     }
   }
 
@@ -169,7 +210,11 @@ nextPaymentDate:
       const updatedItem = mapSubscription({
         ...payload,
         ...requestBody,
-        billingCycle: payload.billingCycle,
+        itemName: payload.subscriptionName,
+        paymentMethod: {
+          id: requestBody.paymentId,
+          name: payload.paymentCardName,
+        },
       })
 
       const index = subscriptions.value.findIndex(
@@ -214,19 +259,12 @@ nextPaymentDate:
     }
   }
 
-  const toggleSubscriptionStatus = async ({ subscriptionId, status }) => {
-    const target = subscriptions.value.find((item) => item.subscriptionId === subscriptionId)
-    if (!target) return
-
-    await updateSubscription({
-      ...target,
-      status,
-    })
-  }
 
   return {
     subscriptions,
     selectedSubscription,
+    categoryOptions,
+    paymentCards,
     filters,
     categories,
     filteredSubscriptions,
@@ -242,7 +280,6 @@ nextPaymentDate:
     setCategory,
     setSort,
     updateSubscription,
-    deleteSubscription,
-    toggleSubscriptionStatus,
+    deleteSubscription
   }
 })
