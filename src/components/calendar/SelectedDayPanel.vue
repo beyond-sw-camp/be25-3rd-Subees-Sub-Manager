@@ -1,4 +1,6 @@
 <script setup>
+import { serviceImage } from '@/utils/imageAssets'
+
 const props = defineProps({
   dateLabel: {
     type: String,
@@ -28,39 +30,6 @@ const getCategoryLabel = (categoryName = '') => {
   }
 
   return map[categoryName] || categoryName || '기타'
-}
-
-const getServiceImage = (serviceName = '') => {
-  const label = String(serviceName).toLowerCase()
-
-  // AI
-  if (label.includes('chatgpt')) return '/image/ai/chatgpt.png'
-  if (label.includes('claude')) return '/image/ai/claude.png'
-  if (label.includes('gemini')) return '/image/ai/gemini.png'
-
-  // Music
-  if (label.includes('spotify')) return '/image/music/Spotify.png'
-  if (label.includes('melon')) return '/image/music/melon.png'
-  if (label.includes('genie')) return '/image/music/genie.png'
-  if (label.includes('apple music') || label.includes('applemusic')) return '/image/music/applemusic.png'
-  if (label.includes('vive')) return '/image/music/vive.png'
-
-  // OTT
-  if (label.includes('netflix')) return '/image/ott/netflix.png'
-  if (label.includes('disney')) return '/image/ott/disney.png'
-  if (label.includes('tving')) return '/image/ott/tving.png'
-  if (label.includes('watcha')) return '/image/ott/Watcha.png'
-  if (label.includes('wavve') || label.includes('wave')) return '/image/ott/wave.png'
-  if (label.includes('coupangplay') || label.includes('wave')) return '/image/ott/coupangPlay.png'
-
-  // Other
-  if (label.includes('배민') || label.includes('baemin')) return '/image/another/baeminclub.png'
-  if (label.includes('icloud')) return '/image/another/icloud.png'
-  if (label.includes('iemo')) return '/image/another/iemo.png'
-  if (label.includes('surrap')) return '/image/another/surrap.png'
-  if (label.includes('wow')) return '/image/another/wow.png'
-
-  return '/image/subees-logo.png'
 }
 
 const getCardBadgeLabel = (payment) => {
@@ -118,7 +87,7 @@ const getCardBadgeClass = (cardName = '') => {
                 class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(46,34,10,0.08)] bg-white"
               >
                 <img
-                  :src="getServiceImage(payment.name)"
+                  :src="serviceImage(payment.name) || '/image/subees-logo.png'"
                   :alt="payment.name"
                   class="h-8 w-8 rounded-full object-cover"
                 />
