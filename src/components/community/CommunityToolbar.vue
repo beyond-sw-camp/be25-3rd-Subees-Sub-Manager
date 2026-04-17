@@ -21,7 +21,7 @@ const sortOptions = [
           v-for="option in sortOptions"
           :key="option.value"
           type="button"
-          class="chip-button !min-h-[34px] !px-3.5 !text-[12px]"
+          class="chip-button !h-[34px] !min-h-0 !px-3.5 !text-[12px]"
           :class="{ 'is-selected': option.value === selectedSort }"
           @click="emit('select-sort', option.value)"
         >
@@ -52,7 +52,7 @@ const sortOptions = [
           v-for="option in sortOptions"
           :key="option.value"
           type="button"
-          class="chip-button !min-h-[34px] !px-3.5 !text-[12px]"
+          class="chip-button !h-[34px] !min-h-0 !px-3.5 !text-[12px]"
           :class="{ 'is-selected': option.value === selectedSort }"
           @click="emit('select-sort', option.value)"
         >
