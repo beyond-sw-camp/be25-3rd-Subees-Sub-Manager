@@ -27,6 +27,13 @@ const categories = ref([])
 const services = ref([])
 const cardOptions = ref([])
 const showSuccessModal = ref(false)
+const previewImage = ref(null)
+const categoryErrorMessage = ref('')
+const serviceErrorMessage = ref('')
+const paymentAmountErrorMessage = ref('')
+const billingCycleErrorMessage = ref('')
+const paymentCardErrorMessage = ref('')
+const paymentStartDateErrorMessage = ref('')
 
 const requestPayload = computed(() => ({
   categoryId: subscriptionForm.value.categoryId,
@@ -64,6 +71,7 @@ const billingCycles = [
 ]
 
 const selectService = (service) => {
+  serviceErrorMessage.value = ''
   subscriptionFormStore.setSubscription(
     service.itemId,
     service.itemName,
@@ -127,6 +135,7 @@ const isStepValid = computed(() => {
 const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
 const selectCategory = async (category) => {
+  categoryErrorMessage.value = ''
   subscriptionFormStore.setCategory(category.categoryId)
 
   const res = await getSubscriptionItemByCategory(category.categoryId)
@@ -135,6 +144,7 @@ const selectCategory = async (category) => {
 
 
 const pickCard = (card) => {
+  paymentCardErrorMessage.value = ''
   subscriptionFormStore.setPaymentCardId(card.paymentId)
   subscriptionForm.value.paymentCardName = card.paymentCardName
   showCardDropdown.value = false
@@ -142,56 +152,74 @@ const pickCard = (card) => {
 }
 const handleIconFileChange = (event) => {
   const file = event.target.files?.[0]
-  subscriptionFormStore.setIconFileName(file?.name ?? '')
+  if (!file) return
+
+  subscriptionFormStore.setIconFileName(file.name)
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    previewImage.value = e.target.result
+  }
+  reader.readAsDataURL(file)
 }
 
 const clearIconFile = () => {
   subscriptionFormStore.setIconFileName('')
+  previewImage.value = null
 }
 const goNext = () => {
   if (currentStep.value === 1) {
     if (!subscriptionForm.value.categoryId) {
-      window.alert('카테고리를 선택해주세요.')
+      categoryErrorMessage.value = '카테고리를 선택해주세요.'
       return
     }
+    categoryErrorMessage.value = ''
   }
 
   if (currentStep.value === 2) {
     if (!subscriptionForm.value.itemId) {
-      window.alert('구독 서비스를 선택해주세요.')
+      serviceErrorMessage.value = '구독 서비스를 선택해주세요.'
       return
     }
+    serviceErrorMessage.value = ''
   }
 
   if (currentStep.value === 3) {
+    let hasError = false
+
+    paymentAmountErrorMessage.value = ''
+    billingCycleErrorMessage.value = ''
+    paymentCardErrorMessage.value = ''
+    paymentStartDateErrorMessage.value = ''
+
     if (
       subscriptionForm.value.paymentAmount === '' ||
       subscriptionForm.value.paymentAmount === null ||
       subscriptionForm.value.paymentAmount === undefined
     ) {
-      window.alert('결제 금액을 입력해주세요.')
-      return
-    }
-
-    if (Number(subscriptionForm.value.paymentAmount) <= 0) {
-      window.alert('결제 금액은 0원보다 커야 합니다.')
-      return
+      paymentAmountErrorMessage.value = '결제 금액을 입력해주세요.'
+      hasError = true
+    } else if (Number(subscriptionForm.value.paymentAmount) <= 0) {
+      paymentAmountErrorMessage.value = '결제 금액은 0원보다 커야 합니다.'
+      hasError = true
     }
 
     if (!subscriptionForm.value.billingCycle) {
-      window.alert('결제 주기를 선택해주세요.')
-      return
+      billingCycleErrorMessage.value = '결제 주기를 선택해주세요.'
+      hasError = true
     }
 
     if (!subscriptionForm.value.paymentCardId) {
-      window.alert('결제 카드를 선택해주세요.')
-      return
+      paymentCardErrorMessage.value = '결제 카드를 선택해주세요.'
+      hasError = true
     }
 
     if (!subscriptionForm.value.paymentStartDate) {
-      window.alert('결제 시작일을 선택해주세요.')
-      return
+      paymentStartDateErrorMessage.value = '결제 시작일을 선택해주세요.'
+      hasError = true
     }
+
+    if (hasError) return
   }
 
   subscriptionFormStore.nextStep()
@@ -255,6 +283,9 @@ const closeSuccessModal = () => {
             <div class="text-sm text-neutral-500">선택한 카테고리는 다음 단계 서비스 목록에 바로 반영돼요.</div>
           </div>
 
+          <p v-if="categoryErrorMessage" class="wizard__error-message">
+            {{ categoryErrorMessage }}
+          </p>
           <div class="wizard__tile-grid">
             <button
               v-for="category in categories"
@@ -295,6 +326,9 @@ const closeSuccessModal = () => {
             선택한 서비스가 다음 단계와 최종 확인 화면에 반영돼요.
           </div>
         </div>
+        <p v-if="serviceErrorMessage" class="wizard__error-message">
+          {{ serviceErrorMessage }}
+        </p>
 
           <div class="wizard__chip-grid">
             <button
@@ -334,17 +368,20 @@ const closeSuccessModal = () => {
 
           <div class="wizard__icon-box">
             <div class="wizard__icon-preview">
+              <img
+                v-if="previewImage"
+                :src="previewImage"
+                class="preview-img"
+              />
               <AppAsset
-              type="service"
-              :value="selectedServiceLabel"
-              secondary-type="category"
-              :secondary-value="subscriptionForm.categoryName"
-              fallback="sparkles"
-              :size="20"
-              wrapper-class="inline-flex items-center justify-center"
-              image-class="h-20 w-20 object-contain"
-              icon-class="text-[#8A6A00]"
-            />
+                v-else
+                type="service"
+                :value="selectedServiceLabel"
+                fallback="sparkles"
+                :size="20"
+                wrapper-class="inline-flex items-center justify-center"
+                image-class="h-20 w-20 object-contain"
+              />
             </div>
             <div>
               <div class="text-sm font-extrabold text-neutral-900">서비스 아이콘</div>
@@ -361,7 +398,7 @@ const closeSuccessModal = () => {
           </div>
         </div>
               
-        <div v-else-if="currentStep === 3" class="wizard__block">
+                <div v-else-if="currentStep === 3" class="wizard__block">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">결제 금액</label>
@@ -371,7 +408,11 @@ const closeSuccessModal = () => {
                 min="0"
                 class="form-input mt-2"
                 placeholder="예: 17000"
+                @input="paymentAmountErrorMessage = ''"
               />
+              <p v-if="paymentAmountErrorMessage" class="wizard__error-message">
+                {{ paymentAmountErrorMessage }}
+              </p>
             </div>
 
             <div>
@@ -383,11 +424,15 @@ const closeSuccessModal = () => {
                   type="button"
                   class="chip-button"
                   :class="{ 'is-selected': subscriptionForm.billingCycle === cycle.value }"
-                  @click="subscriptionFormStore.setBillingCycle(cycle.value)"
+                  @click="() => { subscriptionFormStore.setBillingCycle(cycle.value); billingCycleErrorMessage = '' }"
                 >
                   {{ cycle.label }}
                 </button>
               </div>
+
+              <p v-if="billingCycleErrorMessage" class="wizard__error-message">
+                {{ billingCycleErrorMessage }}
+              </p>
             </div>
           </div>
 
@@ -407,48 +452,52 @@ const closeSuccessModal = () => {
                 </div>
               </div>
 
-          <div class="wizard__card-select-wrap mt-2">
-            <button
-              type="button"
-              class="wizard__card-input w-full"
-              @click="showCardDropdown = !showCardDropdown"
-            >
-              <div class="wizard__card-thumb">
-                <AppAsset
-                  type="card"
-                  :value="subscriptionForm.paymentCardName"
-                  fallback="creditcard"
-                  :size="18"
-                  wrapper-class="inline-flex items-center justify-center"
-                  image-class="h-12 w-12 object-contain"
-                  icon-class="text-[#8A6A00]"
-                  badge-class="inline-flex min-w-[44px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
-                />
+              <div class="wizard__card-select-wrap mt-2">
+                <button
+                  type="button"
+                  class="wizard__card-input w-full"
+                  @click="showCardDropdown = !showCardDropdown"
+                >
+                  <div class="wizard__card-thumb">
+                    <AppAsset
+                      type="card"
+                      :value="subscriptionForm.paymentCardName"
+                      fallback="creditcard"
+                      :size="18"
+                      wrapper-class="inline-flex items-center justify-center"
+                      image-class="h-12 w-12 object-contain"
+                      icon-class="text-[#8A6A00]"
+                      badge-class="inline-flex min-w-[44px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
+                    />
+                  </div>
+
+                  <div class="wizard__card-placeholder">
+                    {{ subscriptionForm.paymentCardName || '예: 현대카드' }}
+                  </div>
+
+                  <div class="wizard__card-arrow"></div>
+                </button>
+
+                <div v-if="showCardDropdown" class="wizard__card-dropdown">
+                  <button
+                    v-for="card in cardOptions"
+                    :key="card.paymentId"
+                    type="button"
+                    class="wizard__card-option"
+                    @click="pickCard(card)"
+                  >
+                    {{ card.paymentCardName }}
+                  </button>
+
+                  <div v-if="cardOptions.length === 0" class="wizard__card-empty">
+                    등록된 카드가 없습니다.
+                  </div>
+                </div>
               </div>
 
-              <div class="wizard__card-placeholder">
-                {{ subscriptionForm.paymentCardName || '예: 현대카드' }}
-              </div>
-
-              <div class="wizard__card-arrow"></div>
-            </button>
-
-            <div v-if="showCardDropdown" class="wizard__card-dropdown">
-            <button
-              v-for="card in cardOptions"
-              :key="card.paymentId"
-              type="button"
-              class="wizard__card-option"
-              @click="pickCard(card)"
-            >
-              {{ card.paymentCardName }}
-            </button>
-
-            <div v-if="cardOptions.length === 0" class="wizard__card-empty">
-              등록된 카드가 없습니다.
-            </div>
-          </div>
-          </div>
+              <p v-if="paymentCardErrorMessage" class="wizard__error-message">
+                {{ paymentCardErrorMessage }}
+              </p>
             </div>
 
             <div>
@@ -457,7 +506,12 @@ const closeSuccessModal = () => {
                 v-model="subscriptionForm.paymentStartDate"
                 type="date"
                 class="form-input mt-2 wizard__date-field"
+                @change="paymentStartDateErrorMessage = ''"
               />
+
+              <p v-if="paymentStartDateErrorMessage" class="wizard__error-message">
+                {{ paymentStartDateErrorMessage }}
+              </p>
             </div>
           </div>
 
@@ -492,7 +546,6 @@ const closeSuccessModal = () => {
             </div>
           </div>
         </div>
-
         <div v-else class="wizard__confirm">
           <div class="wizard__review">
             <div class="wizard__review-top">
@@ -1025,6 +1078,16 @@ const closeSuccessModal = () => {
   grid-template-columns: 1fr 1fr;
 }
 
+.wizard__error-message {
+  margin-top: 6px;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wizard__error-message::before {
+  content: "⚠ ";
+}
 @media (max-width: 1280px) {
   .wizard__icon-box {
     grid-template-columns: auto 1fr;
