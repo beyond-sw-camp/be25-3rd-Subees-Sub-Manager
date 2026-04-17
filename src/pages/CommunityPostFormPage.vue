@@ -28,14 +28,18 @@ const pageDescription = computed(() =>
     : '구독, 지출, 절감 팁, 서비스 비교 등 다른 사용자에게 도움이 되는 내용을 작성하세요.',
 )
 
-const hydrateForm = () => {
+const hydrateForm = async () => {
   if (!isEditMode.value) return
-  const target = communityStore.getPostById(currentPostId.value)
+  let target = communityStore.currentPost
+  if (!target || target.postId !== currentPostId.value) {
+    await communityStore.fetchPostDetail(currentPostId.value)
+    target = communityStore.currentPost
+  }
   if (!target) return
 
   form.title = target.title
   form.content = target.content
-  form.tagsInput = target.tags.join(', ')
+  form.tagsInput = (target.tags ?? []).join(', ')
 }
 
 onMounted(hydrateForm)
@@ -47,7 +51,7 @@ const parseTags = () => {
     .filter(Boolean)
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!authStore.isLoggedIn) {
     communityStore.setError('게시글 작성 및 수정은 로그인 후 이용할 수 있습니다.')
     return
@@ -65,14 +69,14 @@ const handleSubmit = () => {
   }
 
   if (isEditMode.value) {
-    const updated = communityStore.updatePost(currentPostId.value, payload)
+    const updated = await communityStore.updatePost(currentPostId.value, payload)
     if (updated) {
       router.push(`/community/${updated.postId}`)
     }
     return
   }
 
-  const created = communityStore.createPost(payload)
+  const created = await communityStore.createPost(payload)
   if (created) {
     router.push(`/community/${created.postId}`)
   }

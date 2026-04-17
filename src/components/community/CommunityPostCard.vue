@@ -1,18 +1,20 @@
 <script setup>
+// communityBoardPage.vue에서 받아오는 글 목록 정보
 defineProps({
-  item: {
+  item: { //컴포넌트가 받을 이름
     type: Object,
-    required: true,
+    required: true, //부모가 반드시 전달해야 함
   },
 })
 </script>
+
 <!-- 글 목록 반환 -->
 <template>
   <article class="rounded-card border border-neutral-200 bg-white px-5 py-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <!-- <span class="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">커뮤니티</span> -->
-        <span v-if="item.isMine" class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100">내 글</span>
+        <span v-if="item.isMine" class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-100">내 게시글</span>
       </div>
       <p class="text-[12px] text-neutral-500">{{ item.createdAtLabel }}</p>
     </div>

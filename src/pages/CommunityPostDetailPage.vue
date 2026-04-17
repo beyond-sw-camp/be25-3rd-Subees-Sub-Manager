@@ -4,44 +4,47 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useCommunityStore } from '@/stores/community'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const communityStore = useCommunityStore()
-const { successMessage, errorMessage } = storeToRefs(communityStore)
+const authStore = useAuthStore()
+const { successMessage, errorMessage, currentPost: post } = storeToRefs(communityStore)
 const showDeleteConfirm = ref(false)
 
 const postId = computed(() => Number(route.params.postId))
-const post = computed(() => communityStore.getPostById(postId.value))
 
-const openCurrentPost = () => {
+const loadPost = async () => {
   if (Number.isNaN(postId.value)) return
-  communityStore.openPost(postId.value)
+  await communityStore.fetchPostDetail(postId.value)
 }
 
-onMounted(openCurrentPost)
-watch(postId, openCurrentPost)
+onMounted(loadPost)
+watch(postId, loadPost)
 
-const handleDelete = () => {
-  const success = communityStore.deletePost(postId.value)
+//삭제 버튼
+const handleDelete = async () => {
+  const success = await communityStore.deletePost(postId.value)
   if (success) {
     router.push('/community')
   }
 }
 
-const handleToggleScrap = () => {
-  communityStore.toggleScrap(postId.value)
+// 스크랩 버튼
+const handleToggleScrap = async () => {
+  await communityStore.toggleScrap(postId.value)
 }
 
-const copyLink = async () => {
-  const shareUrl = `${window.location.origin}/community/${postId.value}`
-  try {
-    await navigator.clipboard.writeText(shareUrl)
-    communityStore.setSuccess('공유 링크가 복사되었습니다.')
-  } catch (error) {
-    communityStore.setError('링크 복사에 실패했습니다.')
-  }
-}
+// const copyLink = async () => {
+//   const shareUrl = `${window.location.origin}/community/${postId.value}`
+//   try {
+//     await navigator.clipboard.writeText(shareUrl)
+//     communityStore.setSuccess('공유 링크가 복사되었습니다.')
+//   } catch (error) {
+//     communityStore.setError('링크 복사에 실패했습니다.')
+//   }
+// }
 </script>
 
 <template>
@@ -61,12 +64,15 @@ const copyLink = async () => {
               <span>스크랩 {{ post.scrapCount }}</span>
               <span> {{ post.authorNickname }}</span>
             </div> 
-             <!-- 스크랩 & 공유하기 버튼  -->
+             <!-- 스크랩 버튼: 내 글이면 표시 안 함 (자신의 글 스크랩 불가) -->
              <div class="mt-4 flex justify-end gap-3">
-              <button type="button" class="primary-button !p-[15px]" @click="handleToggleScrap">
+              <!-- isScrapped = false : 스크랩하기 버튼 출력 -> post api 호출 -->
+               <!-- isScrapped = true : 스크랩 해제 버튼 출력 -> delete api 호출 -->
+              <!-- 로그인 상태이고 타인 글일 때만 스크랩 버튼 표시 -->
+              <button v-if="authStore.isLoggedIn && !post.isMine" type="button" class="primary-button !p-[15px]" @click="handleToggleScrap">
                 {{ post.isScrapped ? '스크랩 해제' : '스크랩하기' }}
               </button>
-              <button type="button" class="secondary-button " @click="copyLink">공유하기</button>
+              <!-- <button type="button" class="secondary-button " @click="copyLink">공유하기</button> -->
               <!-- <RouterLink to="/community/new" class="secondary-button w-full">새 글 작성</RouterLink> -->
             </div>
           </div>
@@ -87,10 +93,10 @@ const copyLink = async () => {
 
           <div class="mt-8 whitespace-pre-line text-[15px] leading-8 text-neutral-700">{{ post.content }}</div>
 
-          <div class="mt-8 border-t border-neutral-200 pt-6">
+          <!-- <div class="mt-8 border-t border-neutral-200 pt-6">
             <p class="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">최근 수정일</p>
             <p class="mt-2 text-sm text-neutral-700">{{ post.updatedAtLabel }}</p>
-          </div>
+          </div> -->
 
           <div class="mt-6 flex justify-end gap-3">
             <RouterLink to="/community" class="secondary-button">목록</RouterLink>
@@ -136,13 +142,13 @@ const copyLink = async () => {
     </div>
 
     <section v-else class="shell-card p-10 text-center">
-      <p class="text-lg font-semibold text-neutral-900">게시글을 찾을 수 없습니다.</p>
+      <p class="text-lg font-semibold text-neutral-900">해당 게시글을 찾을 수 없습니다.</p>
       <RouterLink to="/community" class="mt-4 inline-flex text-sm font-semibold text-brand-600">목록으로 돌아가기</RouterLink>
     </section>
 
     <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 px-4">
       <div class="w-full max-w-md rounded-modal bg-white p-6 shadow-floating">
-        <p class="text-sm font-semibold text-danger">게시글 삭제</p>
+        <!-- <p class="text-sm font-semibold text-danger">게시글 삭제</p> -->
         <h3 class="mt-2 text-xl font-bold tracking-[-0.02em] text-neutral-900">정말로 이 게시글을 삭제하시겠습니까?</h3>
         <p class="mt-3 text-sm leading-6 text-neutral-500">삭제 후에는 복구할 수 없으며, 스크랩 목록에서도 함께 제거됩니다.</p>
         <div class="mt-6 flex justify-end gap-3">
