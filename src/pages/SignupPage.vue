@@ -177,7 +177,7 @@ const submit = async () => {
                 {{ emailCheck.message }}
               </p>
             </div>
-            <button type="button" class="secondary-button w-full !min-h-[48px] !rounded-[18px]" @click="checkAvailability('email')">
+            <button type="button" class="secondary-button w-full !min-h-[48px] !rounded-[18px] xl:mt-[26px]" @click="checkAvailability('email')">
               {{ emailCheck.loading ? '확인 중' : '중복 확인' }}
             </button>
           </div>
@@ -195,7 +195,7 @@ const submit = async () => {
                 {{ nicknameCheck.message }}
               </p>
             </div>
-            <button type="button" class="secondary-button w-full !min-h-[48px] !rounded-[18px]" @click="checkAvailability('nickname')">
+            <button type="button" class="secondary-button w-full !min-h-[48px] !rounded-[18px] xl:mt-[26px]" @click="checkAvailability('nickname')">
               {{ nicknameCheck.loading ? '확인 중' : '중복 확인' }}
             </button>
           </div>

@@ -1,25 +1,20 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { postLogin, postLogout } from '@/api/auth'
+import {
+  getTokenExpirationTime,
+  handleSessionExpired,
+  loadSession,
+  saveSession,
+} from '@/utils/authSession'
 
-const STORAGE_KEY = 'subees-auth-session'
+let expirationTimerId = null
 
-const loadSession = () => {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch (error) {
-    return null
+const clearExpirationTimer = () => {
+  if (expirationTimerId) {
+    window.clearTimeout(expirationTimerId)
+    expirationTimerId = null
   }
-}
-
-const saveSession = (session) => {
-  if (!session) {
-    window.localStorage.removeItem(STORAGE_KEY)
-    return
-  }
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -31,9 +26,34 @@ export const useAuthStore = defineStore('auth', () => {
   const userId = computed(() => session.value?.userId ?? null)
   const accessToken = computed(() => session.value?.accessToken ?? '')
 
+  const scheduleSessionExpiration = (nextSession) => {
+    clearExpirationTimer()
+
+    const expiresAt = getTokenExpirationTime(nextSession?.accessToken)
+    if (!expiresAt) {
+      return
+    }
+
+    const remainingTime = expiresAt - Date.now()
+
+    if (remainingTime <= 0) {
+      session.value = null
+      saveSession(null)
+      handleSessionExpired()
+      return
+    }
+
+    expirationTimerId = window.setTimeout(() => {
+      session.value = null
+      saveSession(null)
+      handleSessionExpired()
+    }, remainingTime)
+  }
+
   const setSession = (payload) => {
     session.value = payload
     saveSession(payload)
+    scheduleSessionExpiration(payload)
   }
 
   const login = async (payload) => {
@@ -67,6 +87,8 @@ export const useAuthStore = defineStore('auth', () => {
       setSession(null)
     }
   }
+
+  scheduleSessionExpiration(session.value)
 
   return {
     session,
