@@ -115,6 +115,7 @@ const resetForm = () => {
   form.customCardCompany = ''
   form.cardName = ''
   isEditing.value = false
+  lockedCardType.value = null
 }
 
 const isSelectedCard = (card) => !!card.cardId
@@ -130,6 +131,8 @@ const displayProviderName = (card) => {
   return card.customCardCompany || '직접 입력 카드'
 }
 
+const lockedCardType = ref(null)
+
 const startEdit = (card) => {
   form.paymentId = card.paymentId ?? null
   form.cardName = card.cardName ?? ''
@@ -144,6 +147,8 @@ const startEdit = (card) => {
     form.customCardCompany = card.customCardCompany ?? ''
   }
 
+  lockedCardType.value = form.cardType
+
   originalEditValue.value = {
     paymentId: card.paymentId ?? null,
     cardType: card.cardId ? 'SELECT' : 'CUSTOM',
@@ -154,6 +159,7 @@ const startEdit = (card) => {
 
   isEditing.value = true
 }
+
 
 const validateForm = () => {
   if (form.cardType === 'SELECT' && !form.cardId) {
@@ -285,6 +291,8 @@ onMounted(async () => {
     })
   }
 })
+
+
 </script>
 
 <template>
@@ -438,13 +446,24 @@ onMounted(async () => {
           </p>
 
           <div class="mt-5 grid gap-4">
-            <label class="grid gap-2">
-              <span class="form-label">카드 등록 방식</span>
-              <select v-model="form.cardType" class="form-input">
-                <option value="CUSTOM">카드 직접 입력</option>
-                <option value="SELECT">카드 선택</option>
-              </select>
-            </label>
+        <label class="grid gap-2">
+          <span class="form-label">카드 등록 방식</span>
+
+          <template v-if="isEditing">
+            <div class="form-input flex items-center bg-neutral-100 text-neutral-500">
+              {{ form.cardType === 'SELECT' ? '카드 선택' : '카드 직접 입력' }}
+            </div>
+          </template>
+
+          <select
+            v-else
+            v-model="form.cardType"
+            class="form-input"
+          >
+            <option value="CUSTOM">카드 직접 입력</option>
+            <option value="SELECT">카드 선택</option>
+          </select>
+        </label>
 
             <label v-if="form.cardType === 'SELECT'" class="grid gap-2">
               <span class="form-label">카드 선택</span>
