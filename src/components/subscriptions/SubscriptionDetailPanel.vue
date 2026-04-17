@@ -273,10 +273,16 @@ watch(
 
         <div>
           <label class="form-label">카테고리명</label>
-          <select v-model="editForm.categoryName" class="form-input mt-2">
+          <input
+            v-model="editForm.categoryName"
+            type="text"
+            class="form-input form-input--readonly mt-2"
+            readonly
+          />
+          <!--
             <option value="">카테고리를 선택하세요</option>
             <option v-for="name in categoryNames" :key="name" :value="name">{{ name }}</option>
-          </select>
+          -->
         </div>
 
         <div>
