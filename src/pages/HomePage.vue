@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -17,6 +17,15 @@ const isAuthed = computed(() => authStore.isLoggedIn)
 const showScrollTop = ref(false)
 let scrollAnimationId = null
 
+const guestPreviewItems = [
+  { subscriptionId: 'guest-1', subscriptionName: '넷플릭스', nextPaymentDate: '04/18', paymentAmount: 17000, dDay: 2 },
+  { subscriptionId: 'guest-2', subscriptionName: 'ChatGPT Plus', nextPaymentDate: '04/21', paymentAmount: 29000, dDay: 5 },
+  { subscriptionId: 'guest-3', subscriptionName: '유튜브 프리미엄', nextPaymentDate: '04/24', paymentAmount: 14900, dDay: 8 },
+  { subscriptionId: 'guest-4', subscriptionName: '쿠팡와우', nextPaymentDate: '04/27', paymentAmount: 7890, dDay: 11 },
+]
+
+const homePreviewStatus = ref('idle')
+
 const handleWindowScroll = () => {
   showScrollTop.value = window.scrollY > 520
 }
@@ -25,9 +34,27 @@ const summaryStats = computed(() => {
   if (!isAuthed.value) {
     return [
       { label: '이번 달 결제 금액', value: '248,000원', note: '예상 결제 총액' },
-      { label: '다음 결제', value: '04/11', note: '가장 가까운 일정' },
+      { label: '다음 결제', value: '04/18', note: '가장 가까운 일정' },
       { label: '활성 구독', value: '12개', note: '정기 결제 기준' },
       { label: '절감 가능', value: '12,000원', note: '중복·미사용 추정' },
+    ]
+  }
+
+  if (homePreviewStatus.value === 'loading' || !dashboardStore.hasFetched) {
+    return [
+      { label: '이번 달 결제 금액', value: '불러오는 중', note: '개인화된 요약 준비 중' },
+      { label: '다음 결제', value: '-', note: '가장 가까운 일정 계산 중' },
+      { label: '활성 구독', value: '-', note: '등록된 구독 확인 중' },
+      { label: '절감 가능', value: '-', note: '중복·미사용 추정 계산 중' },
+    ]
+  }
+
+  if (homePreviewStatus.value === 'error') {
+    return [
+      { label: '이번 달 결제 금액', value: '-', note: '요약 데이터를 불러오지 못했습니다.' },
+      { label: '다음 결제', value: '-', note: '잠시 후 다시 확인해주세요.' },
+      { label: '활성 구독', value: '-', note: '대시보드에서 다시 조회할 수 있습니다.' },
+      { label: '절감 가능', value: '-', note: '서버 응답을 기다리는 중입니다.' },
     ]
   }
 
@@ -39,14 +66,35 @@ const summaryStats = computed(() => {
   ]
 })
 
-const previewItems = computed(() => dashboardStore.upcomingSubscriptions.slice(0, 4).map((item) => ({
-  ...item,
-  badge: `D-${item.dDay}`,
-})))
+const previewItems = computed(() => {
+  if (!isAuthed.value) {
+    return guestPreviewItems.map((item) => ({
+      ...item,
+      badge: `D-${item.dDay}`,
+    }))
+  }
+
+  return dashboardStore.upcomingSubscriptions.slice(0, 4).map((item) => ({
+    ...item,
+    badge: item.dDay == null ? '-' : item.dDay === 0 ? 'D-DAY' : item.dDay < 0 ? `D+${Math.abs(item.dDay)}` : `D-${item.dDay}`,
+  }))
+})
+
+const hasPreviewItems = computed(() => previewItems.value.length > 0)
+const isHomePreviewLoading = computed(() => isAuthed.value && homePreviewStatus.value === 'loading')
+const hasHomePreviewError = computed(() => isAuthed.value && homePreviewStatus.value === 'error')
 
 const introCopy = computed(() => {
   if (!isAuthed.value) {
     return '넷플릭스부터 ChatGPT까지 흩어진 구독을 한 곳에 모아, 이번 달 결제 금액과 가장 가까운 일정을 바로 확인할 수 있습니다.'
+  }
+
+  if (isHomePreviewLoading.value || !dashboardStore.hasFetched) {
+    return `${authStore.nickname || '사용자'}님의 등록된 구독을 불러와 홈 화면 프리뷰를 실제 결제 데이터 기준으로 준비하고 있습니다.`
+  }
+
+  if (hasHomePreviewError.value) {
+    return '홈 화면 프리뷰를 실제 데이터로 불러오지 못했습니다. 잠시 후 다시 시도하거나 대시보드에서 최신 값을 확인해주세요.'
   }
 
   return `${authStore.nickname || '사용자'}님의 이번 달 예상 결제 금액은 ${formatCurrency(dashboardStore.userSummary.monthlyExpectedAmount)}이며, 가장 가까운 결제일은 ${dashboardStore.userSummary.nextPaymentDate}입니다.`
@@ -55,6 +103,14 @@ const introCopy = computed(() => {
 const heroHighlights = computed(() => {
   if (!isAuthed.value) {
     return ['이번 달 결제 금액 확인', '가장 가까운 결제일 추적', '카테고리별 지출 흐름 정리']
+  }
+
+  if (isHomePreviewLoading.value || !dashboardStore.hasFetched) {
+    return ['실제 구독 데이터 동기화 중', '가장 가까운 결제일 계산 중', '홈 프리뷰 개인화 적용 중']
+  }
+
+  if (hasHomePreviewError.value) {
+    return ['홈 프리뷰 재시도 필요', '대시보드에서 최신값 확인', '결제 캘린더는 계속 이용 가능']
   }
 
   return [
@@ -160,10 +216,29 @@ const openSupportAction = () => {
 
 const handleLogout = async () => {
   await authStore.logout()
+  homePreviewStatus.value = 'idle'
+  dashboardStore.resetState()
   router.push('/')
 }
 
 const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
+
+
+const syncHomePreview = async ({ force = false } = {}) => {
+  if (!isAuthed.value) {
+    homePreviewStatus.value = 'idle'
+    dashboardStore.resetState()
+    return
+  }
+
+  try {
+    homePreviewStatus.value = 'loading'
+    await dashboardStore.fetchDashboard({ force })
+    homePreviewStatus.value = 'ready'
+  } catch (error) {
+    homePreviewStatus.value = 'error'
+  }
+}
 
 const scrollToTop = () => {
   if (scrollAnimationId) cancelAnimationFrame(scrollAnimationId)
@@ -173,6 +248,19 @@ const scrollToTop = () => {
 onMounted(() => {
   handleWindowScroll()
   window.addEventListener('scroll', handleWindowScroll, { passive: true })
+  syncHomePreview()
+})
+
+watch(isAuthed, (loggedIn, wasLoggedIn) => {
+  if (loggedIn && !wasLoggedIn) {
+    syncHomePreview({ force: true })
+    return
+  }
+
+  if (!loggedIn) {
+    homePreviewStatus.value = 'idle'
+    dashboardStore.resetState()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -241,12 +329,23 @@ onBeforeUnmount(() => {
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="eyebrow-label">Preview</p>
-                  <h2 class="mt-2 text-[24px] font-bold tracking-[-0.04em] text-neutral-900">이번 달 요약</h2>
+                  <h2 class="mt-2 text-[24px] font-bold tracking-[-0.04em] text-neutral-900">{{ isAuthed ? '내 구독 프리뷰' : '이번 달 요약' }}</h2>
                 </div>
                 <span class="chip-button is-selected !min-h-[30px] !px-3 !text-xs">{{ isAuthed ? '실데이터' : '미리보기' }}</span>
               </div>
 
-              <div class="mt-5 grid gap-3">
+              <div v-if="isHomePreviewLoading" class="mt-5 rounded-[24px] border border-[rgba(46,34,10,0.08)] bg-white px-5 py-6 text-center">
+                <p class="text-sm font-bold text-neutral-900">실제 구독 데이터를 불러오는 중입니다</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-500">등록한 구독의 결제 일정과 이번 달 금액을 홈 화면 프리뷰에 반영하고 있습니다.</p>
+              </div>
+
+              <div v-else-if="hasHomePreviewError" class="mt-5 rounded-[24px] border border-[rgba(186,107,82,0.18)] bg-[rgba(255,247,244,0.92)] px-5 py-6 text-center">
+                <p class="text-sm font-bold text-neutral-900">홈 화면 프리뷰를 불러오지 못했습니다</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-500">대시보드에서 다시 조회하거나 잠시 후 새로고침해 주세요.</p>
+                <button class="secondary-button mt-4 !min-h-[44px] !px-4" @click="syncHomePreview({ force: true })">다시 불러오기</button>
+              </div>
+
+              <div v-else-if="hasPreviewItems" class="mt-5 grid gap-3">
                 <button
                   v-for="item in previewItems"
                   :key="item.subscriptionId"
@@ -273,6 +372,11 @@ onBeforeUnmount(() => {
                   </div>
                   <span class="shrink-0 text-xs font-extrabold text-[#8A6A00]">{{ item.badge }}</span>
                 </button>
+              </div>
+
+              <div v-else class="mt-5 rounded-[24px] border border-[rgba(46,34,10,0.08)] bg-white px-5 py-6 text-center">
+                <p class="text-sm font-bold text-neutral-900">{{ isAuthed ? '등록된 구독이 아직 없습니다' : '로그인 전 예시 프리뷰를 확인할 수 있습니다' }}</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-500">{{ isAuthed ? '첫 구독이 등록되면 가장 가까운 결제 일정이 여기 표시됩니다.' : '회원가입 후에는 이 영역이 실제 결제 데이터 프리뷰로 바뀝니다.' }}</p>
               </div>
 
               <div class="mt-5 grid gap-3">

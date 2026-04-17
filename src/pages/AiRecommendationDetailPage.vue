@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppAsset from '@/components/ui/AppAsset.vue'
@@ -16,24 +16,62 @@ const titleInput = ref('')
 const mandatoryItems = computed(() => aiStore.parseItemsJson(report.value?.mandatoryItemsJson))
 const optionalItems = computed(() => aiStore.parseItemsJson(report.value?.optionalItemsJson))
 
+const hydrateReport = async () => {
+  if (!reportId.value) return
+
+  try {
+    await aiStore.fetchReportDetail(reportId.value)
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
+}
+
+onMounted(hydrateReport)
+watch(reportId, async () => {
+  titleInput.value = ''
+  await hydrateReport()
+})
+watch(report, (value) => {
+  if (value && !titleInput.value) {
+    titleInput.value = value.reportTitle || ''
+  }
+})
+
 const startEdit = () => {
   titleInput.value = report.value?.reportTitle || ''
 }
 
-const saveTitle = () => {
+const saveTitle = async () => {
   if (!report.value) return
-  aiStore.updateReportTitle(report.value.reportId, titleInput.value)
+
+  try {
+    const saved = await aiStore.updateReportTitle(report.value.reportId, titleInput.value || report.value.reportTitle)
+    titleInput.value = saved?.reportTitle || titleInput.value
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
 }
 
-const saveReport = () => {
+const saveReport = async () => {
   if (!report.value) return
-  aiStore.saveReport(report.value.reportId, { reportTitle: titleInput.value || report.value.reportTitle })
+
+  try {
+    const saved = await aiStore.saveReport(report.value.reportId, { reportTitle: titleInput.value || report.value.reportTitle })
+    titleInput.value = saved?.reportTitle || titleInput.value
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
 }
 
-const deleteReport = () => {
+const deleteReport = async () => {
   if (!report.value || !window.confirm('선택한 추천 기록을 삭제할까요?')) return
-  aiStore.deleteReport(report.value.reportId)
-  router.push('/ai-recommendations/history')
+
+  try {
+    await aiStore.deleteReport(report.value.reportId)
+    router.push('/ai-recommendations/history')
+  } catch (error) {
+    // 스토어에서 에러 상태를 관리합니다.
+  }
 }
 </script>
 

@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useDashboardStore } from '@/stores/dashboard'
 import { useNotificationsStore } from '@/stores/notifications'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import HeaderNotificationsPopover from '@/components/layout/HeaderNotificationsPopover.vue'
@@ -10,8 +11,9 @@ import HeaderNotificationsPopover from '@/components/layout/HeaderNotificationsP
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const dashboardStore = useDashboardStore()
 const notificationsStore = useNotificationsStore()
-const { unreadCount, visibleNotifications } = storeToRefs(notificationsStore)
+const { unreadCount, sortedNotifications } = storeToRefs(notificationsStore)
 
 const notificationsOpen = ref(false)
 const notificationsLayer = ref(null)
@@ -56,8 +58,8 @@ const pageMeta = computed(() => {
     },
     notifications: {
       eyebrow: '알림 센터',
-      title: '결제·지출·커뮤니티 알림을 한곳에서 확인하세요',
-      description: '결제 예정, 인사이트, 커뮤니티 반응을 읽음 상태와 함께 관리합니다.',
+      title: '결제 예정 알림을 한곳에서 확인하세요',
+      description: '결제 3일 전과 결제일 당일 알림을 읽음 상태와 함께 관리합니다.',
     },
     'payment-cards': {
       eyebrow: '결제 카드',
@@ -104,7 +106,7 @@ const headerActions = computed(() => {
       secondary: { label: '대시보드', to: '/dashboard' },
     },
     notifications: {
-      primary: { label: '마이페이지', to: '/mypage' },
+      primary: { label: '결제 캘린더', to: '/calendar' },
       secondary: { label: '대시보드', to: '/dashboard' },
     },
     'payment-cards': {
@@ -125,8 +127,14 @@ const closeNotifications = () => {
 
 const toggleNotifications = async () => {
   notificationsOpen.value = !notificationsOpen.value
+
   if (notificationsOpen.value) {
-    await nextTick()
+    try {
+      await notificationsStore.fetchNotifications({ force: true })
+      await nextTick()
+    } catch (error) {
+      // 헤더 팝업은 조용히 실패 처리
+    }
   }
 }
 
@@ -138,13 +146,22 @@ const openNotificationsPage = (notificationId = null) => {
   })
 }
 
-const handleNotificationSelect = (notificationId) => {
-  notificationsStore.markAsRead(notificationId)
+const handleNotificationSelect = async (notificationId) => {
+  try {
+    await notificationsStore.markAsRead(notificationId)
+  } catch (error) {
+    // 헤더 팝업은 조용히 실패 처리
+  }
+
   openNotificationsPage(notificationId)
 }
 
-const handleNotificationDismiss = (notificationId) => {
-  notificationsStore.closeNotification(notificationId)
+const handleNotificationDismiss = async (notificationId) => {
+  try {
+    await notificationsStore.closeNotification(notificationId)
+  } catch (error) {
+    // 헤더 팝업은 조용히 실패 처리
+  }
 }
 
 const handlePointerDown = (event) => {
@@ -169,9 +186,17 @@ watch(() => route.fullPath, () => {
   closeNotifications()
 })
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('pointerdown', handlePointerDown)
   window.addEventListener('keydown', handleKeydown)
+
+  if (authStore.isLoggedIn) {
+    try {
+      await notificationsStore.ensureFetched()
+    } catch (error) {
+      // 헤더는 조용히 실패 처리
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -181,6 +206,8 @@ onBeforeUnmount(() => {
 
 const handleLogout = async () => {
   await authStore.logout()
+  dashboardStore.resetState()
+  notificationsStore.resetState()
   router.push('/')
 }
 </script>
@@ -203,7 +230,7 @@ const handleLogout = async () => {
 
           <HeaderNotificationsPopover
             v-if="notificationsOpen"
-            :notifications="visibleNotifications"
+            :notifications="sortedNotifications"
             :unread-count="unreadCount"
             @close="closeNotifications"
             @select="handleNotificationSelect"

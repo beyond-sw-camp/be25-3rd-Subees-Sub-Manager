@@ -10,7 +10,7 @@ const emit = defineEmits(['select-sort'])
 
 const sortOptions = [
   { label: '최신순', value: 'latest' },
-  { label: '조회수순', value: 'views' },
+  { label: '인기순', value: 'views' },
   // { label: '스크랩순', value: 'scraps' },
 ]
 </script>

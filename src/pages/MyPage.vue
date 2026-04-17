@@ -314,7 +314,7 @@ const handleWithdraw = async () => {
                     <div class="flex items-center justify-between gap-4">
                       <div>
                         <p class="text-sm font-semibold text-neutral-900">전체 알림받기</p>
-                        <p class="mt-1 text-xs leading-5 text-neutral-500">이메일, 서비스 메시지, 결제 알림을 한 번에 켜고 끕니다.</p>
+                        <p class="mt-1 text-xs leading-5 text-neutral-500">결제 3일 전 알림과 결제일 당일 알림을 한 번에 켜고 끕니다.</p>
                       </div>
                       <button type="button" class="relative inline-flex h-8 w-14 items-center rounded-full transition" :class="allNotificationEnabled ? 'bg-brand-500' : 'bg-neutral-300'" @click="allNotificationEnabled = !allNotificationEnabled">
                         <span class="inline-block h-6 w-6 rounded-full bg-white shadow transition" :class="allNotificationEnabled ? 'translate-x-7' : 'translate-x-1'"></span>
@@ -337,8 +337,8 @@ const handleWithdraw = async () => {
                   <div class="rounded-card border border-neutral-200 bg-white px-4 py-4">
                     <div class="flex items-center justify-between gap-4">
                       <div>
-                        <p class="text-sm font-semibold text-neutral-900">결제 7일전 알림</p>
-                        <p class="mt-1 text-xs leading-5 text-neutral-500">정기 결제 일정을 더 여유 있게 준비할 수 있도록 안내합니다.</p>
+                        <p class="text-sm font-semibold text-neutral-900">결제일 당일 알림</p>
+                        <p class="mt-1 text-xs leading-5 text-neutral-500">결제일이 된 구독 항목을 바로 확인할 수 있도록 알려드립니다.</p>
                       </div>
                       <button type="button" class="relative inline-flex h-8 w-14 items-center rounded-full transition" :class="preferences.paymentReminderEnabled ? 'bg-brand-500' : 'bg-neutral-300'" @click="preferences.paymentReminderEnabled = !preferences.paymentReminderEnabled">
                         <span class="inline-block h-6 w-6 rounded-full bg-white shadow transition" :class="preferences.paymentReminderEnabled ? 'translate-x-7' : 'translate-x-1'"></span>
