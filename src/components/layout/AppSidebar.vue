@@ -28,7 +28,15 @@ const sections = computed(() => [
   },
 ])
 
-const isActive = (to) => route.path === to || route.path.startsWith(`${to}/`)
+const isActive = (to) => {
+  const currentPath = route.path
+
+  if (to === '/subscriptions') {
+    return currentPath === '/subscriptions' || /^\/subscriptions\/(?!new(?:\/|$))/.test(currentPath)
+  }
+
+  return currentPath === to || currentPath.startsWith(`${to}/`)
+}
 </script>
 
 <template>

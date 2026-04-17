@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch, onMounted } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -9,7 +9,6 @@ import { usePaymentCardsStore } from '@/stores/paymentCards'
 import { categoryImage, serviceImage } from '@/utils/imageAssets'
 import { createSubscription } from '@/api/subscription'
 import AppAsset from '@/components/ui/AppAsset.vue'
-import { onMounted } from 'vue'
 import { getSubscriptionCategory } from '@/api/subscription'
 import { getSubscriptionItemByCategory } from '@/api/subscription'
 import { getPaymentCard } from '@/api/subscription'
@@ -34,6 +33,7 @@ const paymentAmountErrorMessage = ref('')
 const billingCycleErrorMessage = ref('')
 const paymentCardErrorMessage = ref('')
 const paymentStartDateErrorMessage = ref('')
+const shouldResetOnLeave = ref(false)
 
 const requestPayload = computed(() => ({
   categoryId: subscriptionForm.value.categoryId,
@@ -63,6 +63,39 @@ onMounted(async () => {
   }))
 
   console.log('최종 cardOptions:', cardOptions.value)
+
+  if (subscriptionForm.value.categoryId) {
+    try {
+      const serviceRes = await getSubscriptionItemByCategory(subscriptionForm.value.categoryId)
+      services.value = serviceRes.data?.data ?? []
+    } catch (error) {
+      services.value = []
+    }
+  }
+})
+
+const resetWizardState = () => {
+  subscriptionFormStore.resetForm()
+  previewImage.value = null
+  showCardPicker.value = false
+  showCardDropdown.value = false
+  categoryErrorMessage.value = ''
+  serviceErrorMessage.value = ''
+  paymentAmountErrorMessage.value = ''
+  billingCycleErrorMessage.value = ''
+  paymentCardErrorMessage.value = ''
+  paymentStartDateErrorMessage.value = ''
+  services.value = []
+}
+
+onBeforeRouteLeave(() => {
+  if (!shouldResetOnLeave.value) {
+    return true
+  }
+
+  resetWizardState()
+  shouldResetOnLeave.value = false
+  return true
 })
 
 const billingCycles = [
@@ -232,6 +265,7 @@ const submitDraft = async () => {
     const response = await createSubscription(requestPayload.value)
 
     console.log('등록 성공:', response.data)
+    shouldResetOnLeave.value = true
     showSuccessModal.value = true
   } catch (error) {
     console.error('등록 실패:', error)

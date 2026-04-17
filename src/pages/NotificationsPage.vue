@@ -64,7 +64,8 @@ watch(activeNotificationId, () => {
 
 onMounted(async () => {
   try {
-    await handleRefresh()
+    await notificationsStore.ensureFetched()
+    await scrollToActiveNotification()
   } catch (error) {
     // 스토어 상태로 에러 메시지 노출
   }
