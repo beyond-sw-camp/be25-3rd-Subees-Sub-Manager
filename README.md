@@ -130,22 +130,20 @@
 
 ---
 
-<a id="화면-및-기능-설계서"></a>
-<details open>
-<summary><b>🎨 화면 및 기능 설계서 (필수)</b></summary>
+<a id="ERD, 테이블 명세서"></a>
+<details>
+<summary><b>🗺️ 데이터 구조 정의 (ERD 참고)</b></summary>
 <br>
 
-- [Figma 화면설계서 바로가기](https://www.figma.com/design/8EOuGl8Jxtz5RJapDro4ky/Subees-화면-및-기능설계서)
+- [ERD 바로가기](https://www.erdcloud.com/d/osSpqKzTmS8zueTJs)
 
-<div align="center">
-  <img src="./이미지/작업이미지/화면설계_미리보기.png" alt="화면 설계서" width="640" />
-</div>
+프론트엔드에서는 백엔드 ERD를 기반으로 데이터 타입을 엄격하게 관리합니다.
 
-**주요 기능 화면**
-1. **대시보드:** 월별 소비 차트 및 카테고리 분석
-2. **구독 목록:** 카드형/리스트형 구독 현황 조회 및 CRUD
-3. **구독 캘린더:** 날짜별 결제 예정 내역 확인
-4. **마이페이지:** 프로필 및 알림 설정 관리
+| 도메인 | 주요 Interface / Type |
+| :--- | :--- |
+| **User** | id, nickname, email, profileImg |
+| **Subscription** | subId, itemName, price, cycle, nextDate |
+| **Community** | postId, title, content, writer, scrapCount |
 
 </details>
 
@@ -168,36 +166,22 @@
 
 ---
 
-<a id="api-명세서"></a>
-<details>
-<summary><b>📑 API 명세서 및 연동 가이드</b></summary>
+<a id="화면-및-기능-설계서"></a>
+<details open>
+<summary><b>🎨 화면 및 기능 설계서 (필수)</b></summary>
 <br>
 
-- [API 명세서 바로가기 (Notion)](https://www.notion.so/api-31e712dca4bf807e97fbe583efc7e99e)
+- [Figma 화면설계서 바로가기](https://www.figma.com/design/8EOuGl8Jxtz5RJapDro4ky/Subees-화면-및-기능설계서)
 
-**연동 전략**
-- **인증:** JWT 토큰 기반의 Private Router 및 Axios Interceptor 구현
-- **데이터 가공:** API 응답 데이터를 UI 컴포넌트 규격에 맞춰 가공하는 커스텀 훅(Hook) 레이어 활용
-- **에러 핸들링:** Global Error Boundary 및 Toast 메시지 알림 처리
+<div align="center">
+  <img src="./이미지/작업이미지/화면설계_미리보기.png" alt="화면 설계서" width="640" />
+</div>
 
-</details>
-
----
-
-<a id="데이터-구조-정의"></a>
-<details>
-<summary><b>🗺️ 데이터 구조 정의 (ERD 참고)</b></summary>
-<br>
-
-- [ERD 바로가기](https://www.erdcloud.com/d/osSpqKzTmS8zueTJs)
-
-프론트엔드에서는 백엔드 ERD를 기반으로 데이터 타입을 엄격하게 관리합니다.
-
-| 도메인 | 주요 Interface / Type |
-| :--- | :--- |
-| **User** | id, nickname, email, profileImg |
-| **Subscription** | subId, itemName, price, cycle, nextDate |
-| **Community** | postId, title, content, writer, scrapCount |
+**주요 기능 화면**
+1. **대시보드:** 월별 소비 차트 및 카테고리 분석
+2. **구독 목록:** 카드형/리스트형 구독 현황 조회 및 CRUD
+3. **구독 캘린더:** 날짜별 결제 예정 내역 확인
+4. **마이페이지:** 프로필 및 알림 설정 관리
 
 </details>
 
