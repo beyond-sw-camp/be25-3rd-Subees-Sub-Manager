@@ -68,27 +68,45 @@ function calculateNextPaymentDate(startDate, billingCycle) {
   if (!normalized) return ''
 
   const [year, month, day] = normalized.split('-').map(Number)
-
   if (!year || !month || !day) return ''
 
-  let nextYear = year
-  let nextMonth = month
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-  if (billingCycle === 'YEARLY') {
-    nextYear += 1
-  } else {
-    nextMonth += 1
-    if (nextMonth > 12) {
-      nextMonth = 1
-      nextYear += 1
-    }
+  const buildDate = (targetYear, targetMonth) => {
+    const lastDay = getLastDayOfMonth(targetYear, targetMonth)
+    const safeDay = Math.min(day, lastDay)
+    return new Date(targetYear, targetMonth - 1, safeDay)
   }
 
-  const lastDay = getLastDayOfMonth(nextYear, nextMonth)
-  const nextDay = Math.min(day, lastDay)
+  if (billingCycle === 'YEARLY') {
+    let targetYear = today.getFullYear()
+    let candidate = buildDate(targetYear, month)
 
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextDay).padStart(2, '0')}`
+    if (candidate < today) {
+      targetYear += 1
+      candidate = buildDate(targetYear, month)
+    }
+
+    return `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, '0')}-${String(candidate.getDate()).padStart(2, '0')}`
+  }
+
+  let targetYear = today.getFullYear()
+  let targetMonth = today.getMonth() + 1
+  let candidate = buildDate(targetYear, targetMonth)
+
+  if (candidate < today) {
+    targetMonth += 1
+    if (targetMonth > 12) {
+      targetMonth = 1
+      targetYear += 1
+    }
+    candidate = buildDate(targetYear, targetMonth)
+  }
+
+  return `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, '0')}-${String(candidate.getDate()).padStart(2, '0')}`
 }
+
 
 function formatDate(value) {
   const normalized = normalizeDate(value)
@@ -116,9 +134,12 @@ function syncForm(item) {
     paymentCardName: item.paymentCardName ?? '',
     billingCycle,
     paymentStartDate,
-    nextPaymentDate: calculateNextPaymentDate(paymentStartDate, billingCycle),
+    nextPaymentDate:
+      normalizeDate(item.nextPaymentDate) ||
+      calculateNextPaymentDate(paymentStartDate, billingCycle),
   }
 }
+
 
 const cycleLabel = computed(() => {
   return editForm.value.billingCycle === 'YEARLY' ? '매년 결제' : '매월 결제'
