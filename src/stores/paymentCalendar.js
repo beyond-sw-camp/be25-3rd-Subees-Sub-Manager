@@ -254,20 +254,22 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
   // 하단 왼쪽 그래프용
   const currentMonthCategorySummary = computed(() => {
-    const categories = categoryAnalytics.value?.categories || []
-    const totalAmount = Number(
-      categoryAnalytics.value?.totalAmount || monthTotalAmount.value || 0,
-    )
+  const categories = categoryAnalytics.value?.categories || []
+  const totalAmount = Number(
+    categoryAnalytics.value?.totalAmount || monthTotalAmount.value || 0,
+  )
 
-    return categories.map((item) => {
-      const meta = CATEGORY_META[item.categoryName] || {
-        displayName: item.categoryName,
-        colorClass: 'bg-[#D9D9D9]',
-      }
+  return categories.map((item) => {
+    const meta = CATEGORY_META[item.categoryName] || {
+      displayName: item.categoryName,
+      colorClass: 'bg-[#D9D9D9]',
+    }
 
-      const itemNames = item.itemNames || ''
-      const ratio =
-        totalAmount > 0
+    const itemNames = item.itemNames || ''
+    const ratio =
+      item.ratio != null
+        ? Number(item.ratio)
+        : totalAmount > 0
           ? Number(
               (
                 (Number(item.totalAmount || 0) / totalAmount) *
@@ -276,17 +278,20 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
             )
           : 0
 
-      return {
-        categoryName: item.categoryName,
-        displayName: meta.displayName,
-        colorClass: meta.colorClass,
-        totalAmount: Number(item.totalAmount || 0),
-        itemNames,
-        subscriptionCount: countItemNames(itemNames),
-        ratio,
-      }
-    })
+    return {
+      categoryName: item.categoryName,
+      displayName: meta.displayName,
+      colorClass: meta.colorClass,
+      totalAmount: Number(item.totalAmount || 0),
+      itemNames,
+      subscriptionCount:
+        item.subscriptionCount != null
+          ? Number(item.subscriptionCount)
+          : countItemNames(itemNames),
+      ratio,
+    }
   })
+})
 
   const dominantCategory = computed(() => {
     if (!currentMonthCategorySummary.value.length) return null
