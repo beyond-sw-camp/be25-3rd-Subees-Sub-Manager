@@ -79,12 +79,9 @@ const submit = async () => {
           </button>
         </form>
 
-        <div class="mt-5 flex items-center justify-between gap-3 text-sm font-medium text-neutral-400">
-          <RouterLink to="/password/reset/request" class="transition hover:text-neutral-900">비밀번호 찾기</RouterLink>
-          <p>
-            계정이 없으신가요?
-            <RouterLink to="/signup" class="font-bold text-[#8A6A00] transition hover:text-neutral-900">회원가입</RouterLink>
-          </p>
+        <div class="mt-5 text-center text-sm font-medium text-neutral-400">
+          계정이 없으신가요?
+          <RouterLink to="/signup" class="ml-1 font-bold text-[#8A6A00] transition hover:text-neutral-900">회원가입</RouterLink>
         </div>
       </section>
     </div>
