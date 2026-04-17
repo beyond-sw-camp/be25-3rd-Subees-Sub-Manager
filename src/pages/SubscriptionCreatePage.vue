@@ -7,90 +7,71 @@ import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionFormStore } from '@/stores/subscriptionForm'
 import { usePaymentCardsStore } from '@/stores/paymentCards'
 import { categoryImage, serviceImage } from '@/utils/imageAssets'
+import { createSubscription } from '@/api/subscription'
 import AppAsset from '@/components/ui/AppAsset.vue'
+import { onMounted } from 'vue'
+import { getSubscriptionCategory } from '@/api/subscription'
+import { getSubscriptionItemByCategory } from '@/api/subscription'
+import { getPaymentCard } from '@/api/subscription'
+
 
 const authStore = useAuthStore()
 const router = useRouter()
 const subscriptionFormStore = useSubscriptionFormStore()
 const paymentCardsStore = usePaymentCardsStore()
-const { currentStep, subscriptionForm, resolvedSubscriptionName, requestPayload } = storeToRefs(subscriptionFormStore)
-const { cardOptions } = storeToRefs(paymentCardsStore)
-
+const { currentStep, subscriptionForm, resolvedSubscriptionName } = storeToRefs(subscriptionFormStore)
 const showCardPicker = ref(false)
-
+const showCardDropdown = ref(false)
 const steps = [1, 2, 3, 4]
+const categories = ref([])
+const services = ref([])
+const cardOptions = ref([])
+const showSuccessModal = ref(false)
 
-const categoryCatalog = [
-  {
-    categoryName: 'OTT',
-    label: 'OTT',
-    description: '영상 스트리밍 서비스',
-    preview: 'N',
-    image: categoryImage('OTT'),
-    services: [
-      { subscriptionName: '넷플릭스', paymentAmount: 17000, image: serviceImage('넷플릭스') },
-      { subscriptionName: '티빙', paymentAmount: 13900, image: serviceImage('티빙') },
-      { subscriptionName: '디즈니+', paymentAmount: 9900, image: serviceImage('디즈니+') },
-      { subscriptionName: '웨이브', paymentAmount: 10900, image: serviceImage('웨이브') },
-    ],
-  },
-  {
-    categoryName: 'Music',
-    label: '음악',
-    description: '음악 스트리밍 서비스',
-    preview: 'M',
-    image: categoryImage('Music'),
-    services: [
-      { subscriptionName: 'Spotify', paymentAmount: 10900, image: serviceImage('Spotify') },
-      { subscriptionName: '멜론', paymentAmount: 10900, image: serviceImage('멜론') },
-      { subscriptionName: 'Apple Music', paymentAmount: 11900, image: serviceImage('Apple Music') },
-      { subscriptionName: '지니', paymentAmount: 8400, image: serviceImage('지니') },
-    ],
-  },
-  {
-    categoryName: 'AI',
-    label: 'AI',
-    description: '생산성·LLM 기반 서비스',
-    preview: 'A',
-    image: categoryImage('AI'),
-    services: [
-      { subscriptionName: 'ChatGPT', paymentAmount: 29000, image: serviceImage('ChatGPT') },
-      { subscriptionName: 'Gemini', paymentAmount: 29000, image: serviceImage('Gemini') },
-      { subscriptionName: 'Claude', paymentAmount: 29000, image: serviceImage('Claude') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-  {
-    categoryName: 'Cloud',
-    label: '클라우드',
-    description: '클라우드·협업 서비스',
-    preview: 'C',
-    image: categoryImage('Cloud'),
-    services: [
-      { subscriptionName: '카카오 톡서랍', paymentAmount: 3900, image: serviceImage('카카오 톡서랍') },
-      { subscriptionName: 'iCloud+', paymentAmount: 4400, image: serviceImage('iCloud+') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-  {
-    categoryName: 'Etc',
-    label: '그 외',
-    description: '멤버십·생활형 서비스',
-    preview: 'E',
-    image: categoryImage('Etc'),
-    services: [
-      { subscriptionName: '쿠팡와우', paymentAmount: 7890, image: serviceImage('쿠팡와우') },
-      { subscriptionName: '배민클럽', paymentAmount: 3990, image: serviceImage('배민클럽') },
-      { subscriptionName: '이모티콘 플러스', paymentAmount: 4900, image: serviceImage('이모티콘 플러스') },
-      { subscriptionName: '직접 입력', paymentAmount: 0, image: null },
-    ],
-  },
-]
+const requestPayload = computed(() => ({
+  categoryId: subscriptionForm.value.categoryId,
+  itemId: subscriptionForm.value.itemId,
+  itemName: null,
+  paymentId: subscriptionForm.value.paymentCardId,
+  price: Number(subscriptionForm.value.paymentAmount),
+  billingCycle: subscriptionForm.value.billingCycle,
+  startDate: subscriptionForm.value.paymentStartDate,
+}))
+
+onMounted(async () => {
+  // 카테고리 조회
+  const categoryRes = await getSubscriptionCategory()
+  categories.value = categoryRes.data.data
+
+  // 카드 조회
+  const cardRes = await getPaymentCard()
+  console.log('카드 응답 전체:', cardRes)
+  console.log('카드 응답 data:', cardRes.data)
+
+  const rawCards = cardRes.data?.data ?? cardRes.data ?? []
+
+  cardOptions.value = rawCards.map((card) => ({
+    paymentId: card.paymentId ?? card.cardId ?? card.id,
+    paymentCardName: card.paymentCardName ?? card.cardName ?? card.name,
+  }))
+
+  console.log('최종 cardOptions:', cardOptions.value)
+})
 
 const billingCycles = [
-  { label: '매월 결제', value: 'MONTHLY' },
-  { label: '매년 결제', value: 'YEARLY' },
+  { label: '매월 결제', value: '1M' },
+  { label: '매년 결제', value: '1Y' },
 ]
+
+const selectService = (service) => {
+  subscriptionFormStore.setSubscription(
+    service.itemId,
+    service.itemName,
+    service.price
+  )
+}
+
+
 
 const progressPercent = computed(() => `${(currentStep.value / 4) * 100}%`)
 
@@ -103,33 +84,34 @@ const prompt = computed(() => {
 
 const stepGuide = computed(() => {
   if (currentStep.value === 1) return 'OTT, 음악, AI처럼 먼저 큰 종류를 고르면 다음 단계 서비스 목록이 바로 정리됩니다.'
-  if (currentStep.value === 2) return '자주 쓰는 서비스가 보이면 바로 선택하고, 없으면 직접 입력으로 넘어가면 됩니다.'
+  if (currentStep.value === 2) return '자주 쓰는 서비스가 보이면 바로 선택해주세요.'
   if (currentStep.value === 3) return '금액, 주기, 카드, 시작일만 채우면 등록에 필요한 핵심 정보는 끝납니다.'
   return '마지막 확인에서 이름·금액·카드·결제일만 다시 보고 저장하면 됩니다.'
 })
 
 const selectedCategory = computed(() => {
-  return categoryCatalog.find((item) => item.categoryName === subscriptionForm.value.categoryName) ?? categoryCatalog[0]
+  return categories.value.find(
+    (item) => item.categoryId === subscriptionForm.value.categoryId
+  ) || {}
 })
 
-const selectedCategoryLabel = computed(() => selectedCategory.value.label)
-const customServiceMode = computed(() => subscriptionForm.value.subscriptionName === '직접 입력')
-const selectedServiceLabel = computed(() => resolvedSubscriptionName.value || '직접 입력 서비스')
+const selectedCategoryLabel = computed(() => selectedCategory.value.categoryName || '')
+
+const selectedServiceLabel = computed(() => {
+  const found = services.value.find(
+    (item) => item.itemId === subscriptionForm.value.itemId
+  )
+  return found?.itemName || ''
+})
+
 const serviceInitial = computed(() => selectedServiceLabel.value.trim().slice(0, 1).toUpperCase() || '?')
-
-const serviceOptions = computed(() => {
-  const base = selectedCategory.value.services
-  return base.some((service) => service.subscriptionName === '직접 입력')
-    ? base
-    : [...base, { subscriptionName: '직접 입력', paymentAmount: 0 }]
-})
+const serviceOptions = computed(() => services.value)
 
 const isStepValid = computed(() => {
-  if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryName)
+  if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryId)
   if (currentStep.value === 2) {
-    if (customServiceMode.value) return subscriptionForm.value.customSubscriptionName.trim().length > 0
-    return Boolean(subscriptionForm.value.subscriptionName)
-  }
+  return Boolean(subscriptionForm.value.itemId)
+}
   if (currentStep.value === 3) {
     return Boolean(
       subscriptionForm.value.paymentAmount &&
@@ -144,21 +126,20 @@ const isStepValid = computed(() => {
 
 const formatCurrency = (value) => `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
-const selectCategory = (category) => {
-  const defaultService = category.services[0]?.subscriptionName ?? '직접 입력'
-  const defaultAmount = category.services[0]?.paymentAmount ?? 0
-  subscriptionFormStore.setCategory(category.categoryName, defaultService, defaultAmount)
+const selectCategory = async (category) => {
+  subscriptionFormStore.setCategory(category.categoryId)
+
+  const res = await getSubscriptionItemByCategory(category.categoryId)
+  services.value = res.data.data
 }
 
-const selectService = (service) => {
-  subscriptionFormStore.setSubscription(service.subscriptionName, service.paymentAmount)
-}
 
 const pickCard = (card) => {
-  subscriptionFormStore.setPaymentCardName(card)
+  subscriptionFormStore.setPaymentCardId(card.paymentId)
+  subscriptionForm.value.paymentCardName = card.paymentCardName
+  showCardDropdown.value = false
   showCardPicker.value = false
 }
-
 const handleIconFileChange = (event) => {
   const file = event.target.files?.[0]
   subscriptionFormStore.setIconFileName(file?.name ?? '')
@@ -167,32 +148,73 @@ const handleIconFileChange = (event) => {
 const clearIconFile = () => {
   subscriptionFormStore.setIconFileName('')
 }
-
 const goNext = () => {
-  if (!isStepValid.value) return
+  if (currentStep.value === 1) {
+    if (!subscriptionForm.value.categoryId) {
+      window.alert('카테고리를 선택해주세요.')
+      return
+    }
+  }
+
+  if (currentStep.value === 2) {
+    if (!subscriptionForm.value.itemId) {
+      window.alert('구독 서비스를 선택해주세요.')
+      return
+    }
+  }
+
+  if (currentStep.value === 3) {
+    if (
+      subscriptionForm.value.paymentAmount === '' ||
+      subscriptionForm.value.paymentAmount === null ||
+      subscriptionForm.value.paymentAmount === undefined
+    ) {
+      window.alert('결제 금액을 입력해주세요.')
+      return
+    }
+
+    if (Number(subscriptionForm.value.paymentAmount) <= 0) {
+      window.alert('결제 금액은 0원보다 커야 합니다.')
+      return
+    }
+
+    if (!subscriptionForm.value.billingCycle) {
+      window.alert('결제 주기를 선택해주세요.')
+      return
+    }
+
+    if (!subscriptionForm.value.paymentCardId) {
+      window.alert('결제 카드를 선택해주세요.')
+      return
+    }
+
+    if (!subscriptionForm.value.paymentStartDate) {
+      window.alert('결제 시작일을 선택해주세요.')
+      return
+    }
+  }
+
   subscriptionFormStore.nextStep()
 }
 
-const submitDraft = () => {
-  window.alert('구독이 등록되었습니다.')
+const submitDraft = async () => {
+  try {
+    console.log('보낼 payload:', requestPayload.value)
+
+    const response = await createSubscription(requestPayload.value)
+
+    console.log('등록 성공:', response.data)
+    showSuccessModal.value = true
+  } catch (error) {
+    console.error('등록 실패:', error)
+    console.error('응답 데이터:', error.response?.data)
+    window.alert(error.response?.data?.message || '구독 등록에 실패했습니다.')
+  }
+}
+const closeSuccessModal = () => {
+  showSuccessModal.value = false
   router.push('/subscriptions')
 }
-
-watch(
-  () => subscriptionForm.value.categoryName,
-  (nextCategory) => {
-    const matchedCategory = categoryCatalog.find((item) => item.categoryName === nextCategory)
-    if (!matchedCategory) return
-
-    const availableServices = matchedCategory.services.map((item) => item.subscriptionName)
-    if (!availableServices.includes(subscriptionForm.value.subscriptionName)) {
-      const fallback = matchedCategory.services[0]
-      if (fallback) {
-        subscriptionFormStore.setSubscription(fallback.subscriptionName, fallback.paymentAmount)
-      }
-    }
-  },
-)
 </script>
 
 <template>
@@ -224,6 +246,7 @@ watch(
           <p class="text-xs font-extrabold uppercase tracking-[0.12em] text-neutral-300">등록 안내</p>
           <p class="mt-2 text-sm font-bold text-neutral-900">{{ stepGuide }}</p>
         </div>
+      
 
         <div v-if="currentStep === 1" class="wizard__block">
           <div class="wizard__selection">
@@ -234,61 +257,70 @@ watch(
 
           <div class="wizard__tile-grid">
             <button
-              v-for="category in categoryCatalog"
-              :key="category.categoryName"
+              v-for="category in categories"
+              :key="category.categoryId"
               type="button"
               class="wizard__tile"
-              :class="{ 'wizard__tile--active': subscriptionForm.categoryName === category.categoryName }"
+              :class="{ 'wizard__tile--active': subscriptionForm.categoryId === category.categoryId }"
               @click="selectCategory(category)"
-            >
-              <div v-if="subscriptionForm.categoryName === category.categoryName" class="wizard__tile-check">선택됨</div>
+              >
+              <div v-if="subscriptionForm.categoryId === category.categoryId" class="wizard__tile-check">선택됨</div>
+
               <div class="wizard__tile-image">
                 <AppAsset
-                type="category"
-                :value="category.label"
-                fallback="grid"
-                :size="18"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-24 w-24 object-contain lg:h-28 lg:w-28 xl:h-32 xl:w-32"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="category"
+                  :value="category.categoryName"
+                  fallback="grid"
+                  :size="72"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-32 w-32 object-contain lg:h-36 lg:w-36 xl:h-40 xl:w-40"
+                  icon-class="text-[#8A6A00]"
+                />
               </div>
-              <div class="wizard__tile-title">{{ category.label }}</div>
-              <div class="text-sm text-neutral-500">{{ category.description }}</div>
+
+<div class="wizard__tile-title">{{ category.categoryName }}</div>
+<div class="text-sm text-neutral-500">{{ category.description }}</div>
             </button>
           </div>
         </div>
 
         <div v-else-if="currentStep === 2" class="wizard__block">
+          
           <div class="wizard__selection">
-            <div class="wizard__selection-label">현재 선택한 서비스</div>
-            <div class="wizard__selection-value">{{ selectedServiceLabel }}</div>
-            <div class="text-sm text-neutral-500">로고가 있는 서비스는 아이콘 이미지를 함께 보여주고, 직접 입력 항목만 fallback으로 처리합니다.</div>
+          <div class="wizard__selection-label">현재 선택한 서비스</div>
+          <div class="wizard__selection-value">
+            {{ selectedServiceLabel || '서비스를 선택해주세요.' }}
           </div>
+          <div class="text-sm text-neutral-500">
+            선택한 서비스가 다음 단계와 최종 확인 화면에 반영돼요.
+          </div>
+        </div>
 
           <div class="wizard__chip-grid">
             <button
               v-for="service in serviceOptions"
-              :key="service.subscriptionName"
+              :key="service.itemId"
               type="button"
               class="wizard__service-chip"
-              :class="{ 'wizard__service-chip--active': subscriptionForm.subscriptionName === service.subscriptionName }"
+              :class="{ 'wizard__service-chip--active': subscriptionForm.itemId === service.itemId }"
               @click="selectService(service)"
             >
               <span class="wizard__service-chip-icon">
                 <AppAsset
-                type="service"
-                :value="service.subscriptionName"
-                fallback="sparkles"
-                :size="16"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-11 w-11 object-contain"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="service"
+                  :value="service.itemName"
+                  fallback="sparkles"
+                  :size="16"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-11 w-11 object-contain"
+                  icon-class="text-[#8A6A00]"
+                />
               </span>
-              <span>{{ service.subscriptionName === '직접 입력' ? '직접입력' : service.subscriptionName }}</span>
+
+              <span>{{ service.itemName }}</span>
             </button>
           </div>
+
 
           <div v-if="customServiceMode" class="field-block">
             <label class="form-label">서비스명 직접입력</label>
@@ -328,12 +360,18 @@ watch(
             </div>
           </div>
         </div>
-
+              
         <div v-else-if="currentStep === 3" class="wizard__block">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">결제 금액</label>
-              <input v-model="subscriptionForm.paymentAmount" type="number" min="0" class="form-input mt-2" placeholder="예: 17000" />
+              <input
+                v-model="subscriptionForm.paymentAmount"
+                type="number"
+                min="0"
+                class="form-input mt-2"
+                placeholder="예: 17000"
+              />
             </div>
 
             <div>
@@ -359,14 +397,26 @@ watch(
                 <label class="form-label">결제 카드</label>
                 <div class="flex items-center gap-3">
                   <RouterLink to="/payment-cards" class="wizard__pick-link">카드 관리</RouterLink>
-                  <button type="button" class="wizard__pick-link" @click="showCardPicker = !showCardPicker">이미지로 선택</button>
+                  <button
+                    type="button"
+                    class="wizard__pick-link"
+                    @click="showCardPicker = !showCardPicker"
+                  >
+                    이미지로 선택
+                  </button>
                 </div>
               </div>
-              <div class="wizard__card-input mt-2">
-                <div class="wizard__card-thumb">
-                  <AppAsset
+
+          <div class="wizard__card-select-wrap mt-2">
+            <button
+              type="button"
+              class="wizard__card-input w-full"
+              @click="showCardDropdown = !showCardDropdown"
+            >
+              <div class="wizard__card-thumb">
+                <AppAsset
                   type="card"
-                  :value="subscriptionForm.paymentCardName === '직접 입력' ? subscriptionForm.customPaymentCardName : subscriptionForm.paymentCardName"
+                  :value="subscriptionForm.paymentCardName"
                   fallback="creditcard"
                   :size="18"
                   wrapper-class="inline-flex items-center justify-center"
@@ -374,52 +424,72 @@ watch(
                   icon-class="text-[#8A6A00]"
                   badge-class="inline-flex min-w-[44px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
                 />
-                </div>
-                <input
-                  v-if="subscriptionForm.paymentCardName !== '직접 입력'"
-                  :value="subscriptionForm.paymentCardName"
-                  class="form-input wizard__card-field"
-                  placeholder="예: 현대카드"
-                  readonly
-                />
-                <input
-                  v-else
-                  v-model="subscriptionForm.customPaymentCardName"
-                  class="form-input wizard__card-field"
-                  placeholder="예: 카카오뱅크 체크카드"
-                />
               </div>
+
+              <div class="wizard__card-placeholder">
+                {{ subscriptionForm.paymentCardName || '예: 현대카드' }}
+              </div>
+
+              <div class="wizard__card-arrow"></div>
+            </button>
+
+            <div v-if="showCardDropdown" class="wizard__card-dropdown">
+            <button
+              v-for="card in cardOptions"
+              :key="card.paymentId"
+              type="button"
+              class="wizard__card-option"
+              @click="pickCard(card)"
+            >
+              {{ card.paymentCardName }}
+            </button>
+
+            <div v-if="cardOptions.length === 0" class="wizard__card-empty">
+              등록된 카드가 없습니다.
+            </div>
+          </div>
+          </div>
             </div>
 
             <div>
               <label class="form-label">결제 시작일</label>
-              <input v-model="subscriptionForm.paymentStartDate" type="date" class="form-input mt-2" />
+              <input
+                v-model="subscriptionForm.paymentStartDate"
+                type="date"
+                class="form-input mt-2 wizard__date-field"
+              />
             </div>
           </div>
 
-          <div v-if="showCardPicker" class="picker-grid mt-4">
-            <button
-              v-for="card in [...cardOptions, '직접 입력']"
-              :key="card"
-              type="button"
-              class="picker-card"
-              :class="{ 'picker-card--active': subscriptionForm.paymentCardName === card }"
-              @click="pickCard(card)"
-            >
-              <div class="picker-card__img">
-                <AppAsset
-                type="card"
-                :value="card"
-                fallback="creditcard"
-                :size="16"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-12 w-12 object-contain"
-                icon-class="text-[#8A6A00]"
-                badge-class="inline-flex min-w-[48px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
-              />
-              </div>
-              <div class="picker-card__label">{{ card }}</div>
-            </button>
+          <div v-if="showCardPicker">
+            <div v-if="cardOptions.length === 0" class="text-sm text-neutral-500 mt-3">
+              등록된 카드가 없습니다. 카드 관리에서 먼저 카드를 등록해주세요.
+            </div>
+
+            <div v-else class="picker-grid mt-4">
+              <button
+                v-for="card in cardOptions"
+                :key="card.paymentId"
+                type="button"
+                class="picker-card"
+                :class="{ 'picker-card--active': subscriptionForm.paymentCardId === card.paymentId }"
+                @click="pickCard(card)"
+              >
+                <div class="picker-card__img">
+                  <AppAsset
+                    type="card"
+                    :value="card.paymentCardName"
+                    fallback="creditcard"
+                    :size="16"
+                    wrapper-class="inline-flex items-center justify-center"
+                    image-class="h-12 w-12 object-contain"
+                    icon-class="text-[#8A6A00]"
+                    badge-class="inline-flex min-w-[48px] items-center justify-center rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-[-0.02em]"
+                  />
+                </div>
+                <div class="picker-card__label">{{ card.paymentCardName }}</div>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -428,19 +498,21 @@ watch(
             <div class="wizard__review-top">
               <div class="wizard__review-icon">
                 <AppAsset
-                type="service"
-                :value="selectedServiceLabel"
-                secondary-type="category"
-                :secondary-value="subscriptionForm.categoryName"
-                fallback="sparkles"
-                :size="20"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-20 w-20 object-contain"
-                icon-class="text-[#8A6A00]"
-              />
+                  type="service"
+                  :value="selectedServiceLabel || resolvedSubscriptionName"
+                  secondary-type="category"
+                  :secondary-value="selectedCategoryLabel"
+                  fallback="sparkles"
+                  :size="20"
+                  wrapper-class="inline-flex items-center justify-center"
+                  image-class="h-20 w-20 object-contain"
+                  icon-class="text-[#8A6A00]"
+                />
               </div>
               <div>
-                <div class="wizard__review-name">{{ selectedServiceLabel }}</div>
+                <div class="wizard__review-name">
+                  {{ selectedServiceLabel || resolvedSubscriptionName || '선택한 서비스' }}
+                </div>
                 <div class="text-sm text-neutral-500">{{ selectedCategoryLabel }}</div>
               </div>
             </div>
@@ -450,6 +522,7 @@ watch(
             <div class="wizard__row"><span>카드</span><strong>{{ subscriptionForm.paymentCardName === '직접 입력' ? (subscriptionForm.customPaymentCardName || '직접 입력 예정') : (subscriptionForm.paymentCardName || '미등록') }}</strong></div>
           </div>
 
+          <!--
           <div>
             <label class="form-label">메모를 남길 수 있어요 (선택)</label>
             <textarea
@@ -459,20 +532,39 @@ watch(
               placeholder="예: 가족과 공유 중, 학생 할인 확인 필요"
             ></textarea>
           </div>
-
+          -->
+          <!--
           <div class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-neutral-900 p-4 text-xs leading-6 text-white">
             <div class="mb-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/60">API payload preview</div>
             <pre class="overflow-x-auto whitespace-pre-wrap break-all">{{ JSON.stringify(requestPayload, null, 2) }}</pre>
           </div>
+        
+        -->
         </div>
 
         <div class="wizard__actions">
           <button v-if="currentStep > 1" type="button" class="secondary-button !w-full" @click="subscriptionFormStore.prevStep()">이전</button>
-          <button v-if="currentStep < 4" type="button" class="primary-button !w-full" :disabled="!isStepValid" @click="goNext">다음</button>
+          <button v-if="currentStep < 4" type="button" class="primary-button !w-full" @click="goNext">다음
+</button>
           <button v-else type="button" class="primary-button !w-full" @click="submitDraft">구독 추가하기</button>
         </div>
       </div>
     </section>
+    <div v-if="showSuccessModal" class="modal-overlay">
+  <div class="success-modal">
+    <div class="success-modal__icon">✓</div>
+    <div class="success-modal__title">구독이 추가되었습니다</div>
+    <div class="success-modal__desc">
+      등록한 구독이 목록에 반영되었어요.
+    </div>
+
+    <div class="success-modal__actions">
+      <button type="button" class="primary-button !w-full" @click="closeSuccessModal">
+        확인
+      </button>
+    </div>
+  </div>
+</div>
   </AppShell>
 </template>
 
@@ -575,9 +667,10 @@ watch(
 }
 
 .wizard__tile--active {
-  border-color: rgba(242, 210, 33, 0.34);
-  background: rgba(242, 210, 33, 0.12);
-  box-shadow: 0 0 0 3px rgba(242, 210, 33, 0.1);
+  border: 2px solid #f2d221;
+  background: rgba(242, 210, 33, 0.18);
+  box-shadow: 0 10px 24px rgba(242, 210, 33, 0.22);
+  transform: translateY(-2px);
 }
 
 .wizard__tile-check {
@@ -787,6 +880,149 @@ watch(
   font-size: 13px;
   font-weight: 800;
   color: #1e180d;
+}
+
+.wizard__card-select-wrap {
+  position: relative;
+}
+/* 카드 선택 박스 */
+.wizard__card-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 69px;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  border-radius: 22px;
+  background: rgba(247, 241, 227, 0.78);
+}
+
+.wizard__card-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  text-align: left;
+  color: #61563d;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* 드롭다운 화살표 모양 */
+.wizard__card-arrow {
+  margin-left: auto;
+  margin-right: 20px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #8a6a00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+.wizard__card-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  border-radius: 18px;
+  background: #fffdf7;
+  box-shadow: 0 10px 24px rgba(46, 34, 10, 0.08);
+  padding: 8px;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+}
+
+.wizard__card-option {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e180d;
+  cursor: pointer;
+}
+
+.wizard__card-option:hover {
+  background: rgba(242, 210, 33, 0.12);
+}
+
+.wizard__card-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #8a7f67;
+}
+
+/* 그 날짜 입력 부분  */
+.wizard__date-field {
+  min-height: 69px;
+  border-radius: 22px;
+}
+
+/* 구독이 확인 되었습니다 팝업창 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 24, 13, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.success-modal {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 28px;
+  background: #fffdf7;
+  border: 1px solid rgba(46, 34, 10, 0.08);
+  box-shadow: 0 24px 60px rgba(46, 34, 10, 0.18);
+  padding: 28px 24px 22px;
+  display: grid;
+  gap: 14px;
+  text-align: center;
+}
+
+.success-modal__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(242, 210, 33, 0.18);
+  color: #8a6a00;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.success-modal__title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #1e180d;
+}
+
+.success-modal__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #61563d;
+}
+
+.success-modal__actions {
+  margin-top: 6px;
+  display: grid;
+  gap: 10px;
+}
+
+.success-modal__actions.two-buttons {
+  grid-template-columns: 1fr 1fr;
 }
 
 @media (max-width: 1280px) {

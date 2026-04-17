@@ -22,17 +22,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'select-category', 'select-sort'])
 
-const sortOptions = [
-  { label: '다음 결제일 순', value: 'NEXT_PAYMENT_ASC' },
-  { label: '금액 높은 순', value: 'AMOUNT_DESC' },
-  { label: '최근 수정 순', value: 'UPDATED_DESC' },
-  { label: '이름 가나다 순', value: 'NAME_ASC' },
-]
 </script>
 
 <template>
-  <section class="shell-card p-5 md:p-6 xl:p-7">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+  <section class="shell-card py-0.5 px-1 md:px-6 xl:px-7">
+    <div class="flex flex-col gap-4 mt-6 xl:flex-row xl:items-center xl:justify-between">
       <div>
         <p class="text-sm font-semibold text-[#8A6A00]">구독 검색 / 필터</p>
         <h2 class="mt-2 text-[22px] font-bold tracking-[-0.03em] text-neutral-900">서비스명으로 바로 찾고 카테고리로 좁혀보세요</h2>
@@ -55,21 +49,21 @@ const sortOptions = [
           <input
             :value="props.modelValue"
             type="text"
-            class="w-full border-0 bg-transparent p-0 text-[18px] font-bold tracking-[-0.03em] text-neutral-900 outline-none placeholder:text-neutral-400 xl:text-[20px]"
-            placeholder="예: 넷플릭스, ChatGPT, 멜론"
+            class="w-full border-0 bg-transparent pl-6 text-[12px] tracking-[-0.03em] text-neutral-900 outline-none placeholder:text-neutral-400 xl:text-[20px]"
+            placeholder="예 :  Netflix , ChatGPT , 멜론"
             @input="emit('update:modelValue', $event.target.value)"
           />
           <button
             v-if="props.modelValue"
             type="button"
-            class="inline-flex h-9 items-center justify-center rounded-full border border-[rgba(46,34,10,0.08)] bg-brand-50 px-3 text-[12px] font-bold text-neutral-700"
+            class="inline-flex h-9 inline-flex min-w-[56px] items-center justify-center whitespace-nowrap rounded-full border border-[rgba(46,34,10,0.08)]  bg-brand-50 px-3 text-[12px] font-bold text-neutral-700"
             @click="emit('update:modelValue', '')"
           >
             초기화
           </button>
         </div>
       </label>
-
+<!--
       <label class="rounded-[24px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.92)] px-4 py-3">
         <div class="text-[12px] font-extrabold uppercase tracking-[0.08em] text-neutral-500">정렬 기준</div>
         <div class="mt-2 flex items-center gap-2">
@@ -83,6 +77,7 @@ const sortOptions = [
           <AppIcon name="chevrondown" :size="18" />
         </div>
       </label>
+      -->
     </div>
 
     <div class="mt-5 flex flex-wrap gap-3">

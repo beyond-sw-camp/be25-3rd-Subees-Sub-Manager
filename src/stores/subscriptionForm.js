@@ -1,15 +1,17 @@
 import { defineStore } from 'pinia'
 
 const initialForm = () => ({
-  categoryName: 'OTT',
-  subscriptionName: '넷플릭스',
+  categoryId: null,
+  itemId: null,
+  itemName: '',
   customSubscriptionName: '',
   serviceIconFileName: '',
-  paymentAmount: 17000,
-  billingCycle: 'MONTHLY',
-  paymentCardName: '현대카드',
+  paymentAmount: 0,
+  billingCycle: '1M',
+  paymentCardId: null,
+  paymentCardName: '',
   customPaymentCardName: '',
-  paymentStartDate: '2026-04-11',
+  paymentStartDate: '',
   note: '',
 })
 
@@ -18,69 +20,71 @@ export const useSubscriptionFormStore = defineStore('subscriptionForm', {
     currentStep: 1,
     subscriptionForm: initialForm(),
   }),
+
   getters: {
     resolvedSubscriptionName(state) {
-      return state.subscriptionForm.subscriptionName === '직접 입력'
-        ? state.subscriptionForm.customSubscriptionName.trim()
-        : state.subscriptionForm.subscriptionName
-    },
-    requestPayload(state) {
-      const resolvedSubscriptionName = state.subscriptionForm.subscriptionName === '직접 입력'
-        ? state.subscriptionForm.customSubscriptionName.trim()
-        : state.subscriptionForm.subscriptionName
-
-      return {
-        categoryName: state.subscriptionForm.categoryName,
-        subscriptionName: resolvedSubscriptionName,
-        paymentAmount: Number(state.subscriptionForm.paymentAmount || 0),
-        billingCycle: state.subscriptionForm.billingCycle,
-        paymentCardName: state.subscriptionForm.paymentCardName === '직접 입력'
-          ? state.subscriptionForm.customPaymentCardName.trim()
-          : state.subscriptionForm.paymentCardName,
-        paymentStartDate: state.subscriptionForm.paymentStartDate,
-        note: state.subscriptionForm.note?.trim() || '',
+      if (state.subscriptionForm.itemId === null) {
+        return state.subscriptionForm.customSubscriptionName.trim()
       }
+      return state.subscriptionForm.itemName
     },
   },
+
   actions: {
     goToStep(step) {
       this.currentStep = Math.min(Math.max(step, 1), 4)
     },
+
     nextStep() {
       this.currentStep = Math.min(this.currentStep + 1, 4)
     },
+
     prevStep() {
       this.currentStep = Math.max(this.currentStep - 1, 1)
     },
-    setCategory(categoryName, defaultService, defaultAmount) {
-      this.subscriptionForm.categoryName = categoryName
-      this.subscriptionForm.subscriptionName = defaultService
+
+    // ✅ 카테고리 선택
+    setCategory(categoryId) {
+      this.subscriptionForm.categoryId = categoryId
+
+      // 서비스 초기화
+      this.subscriptionForm.itemId = null
+      this.subscriptionForm.itemName = ''
       this.subscriptionForm.customSubscriptionName = ''
-      if (typeof defaultAmount === 'number') {
-        this.subscriptionForm.paymentAmount = defaultAmount
-      }
     },
-    setSubscription(subscriptionName, defaultAmount) {
-      this.subscriptionForm.subscriptionName = subscriptionName
-      if (subscriptionName !== '직접 입력') {
+
+    // ✅ 서비스 선택
+    setSubscription(itemId, itemName, defaultAmount) {
+      this.subscriptionForm.itemId = itemId
+      this.subscriptionForm.itemName = itemName
+
+      if (itemId !== null) {
         this.subscriptionForm.customSubscriptionName = ''
       }
+
       if (typeof defaultAmount === 'number') {
         this.subscriptionForm.paymentAmount = defaultAmount
       }
     },
-    setIconFileName(fileName) {
-      this.subscriptionForm.serviceIconFileName = fileName
-    },
-    setPaymentCardName(paymentCardName) {
-      this.subscriptionForm.paymentCardName = paymentCardName
-      if (paymentCardName !== '직접 입력') {
+
+    // ✅ 카드 선택
+    setPaymentCardId(paymentId, paymentName) {
+      this.subscriptionForm.paymentCardId = paymentId
+      this.subscriptionForm.paymentCardName = paymentName
+
+      if (paymentName !== '직접 입력') {
         this.subscriptionForm.customPaymentCardName = ''
       }
     },
+
+    setIconFileName(fileName) {
+      this.subscriptionForm.serviceIconFileName = fileName
+    },
+
     setBillingCycle(billingCycle) {
       this.subscriptionForm.billingCycle = billingCycle
     },
+
     resetForm() {
       this.currentStep = 1
       this.subscriptionForm = initialForm()
