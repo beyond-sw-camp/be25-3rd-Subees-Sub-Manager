@@ -8,17 +8,44 @@ import {
   postRecommendSave,
   postRecommendSubmit,
 } from '@/api/recommend'
+import { getSubscriptionCategory, getSubscriptionItemByCategory } from '@/api/subscription'
 
 const DRAFT_KEY = 'subees-ai-recommend-draft-v4'
 const ACTIVE_REPORT_KEY = 'subees-ai-recommend-active-v4'
 
-const CATEGORY_OPTIONS = ['AI', '생산성', '디자인', '클라우드', '기타']
-const SERVICE_LIBRARY = [
-  { name: 'ChatGPT Plus', category: 'AI', monthlyPrice: 29000, description: '문서 작성, 정리, 자동화에 넓게 쓰기 좋습니다.' },
-  { name: 'Claude Pro', category: 'AI', monthlyPrice: 29000, description: '긴 문서 요약과 비교 검토에 강점이 있습니다.' },
-  { name: 'Gemini Advanced', category: 'AI', monthlyPrice: 29000, description: '리서치와 검색 기반 정리에 적합합니다.' },
-  { name: 'Notion AI', category: '생산성', monthlyPrice: 16000, description: '문서 협업과 회의 요약에 활용할 수 있습니다.' },
-  { name: 'Perplexity Pro', category: 'AI', monthlyPrice: 29000, description: '검색과 출처 확인이 필요한 업무에 적합합니다.' },
+const FALLBACK_CATEGORY_OPTIONS = ['OTT', 'AI', 'Music', 'Others']
+const FALLBACK_SERVICE_LIBRARY = [
+  { name: 'Netflix', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'Tving', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'Disney+', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'CoupangPlay', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'Watcha', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'Laftel', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'Wave', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'AppleTv', category: 'OTT', monthlyPrice: 0, description: '' },
+  { name: 'ChatGpt', category: 'AI', monthlyPrice: 0, description: '' },
+  { name: 'Gemini', category: 'AI', monthlyPrice: 0, description: '' },
+  { name: 'Claude', category: 'AI', monthlyPrice: 0, description: '' },
+  { name: 'Melon', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'AppleMusic', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'Spotify', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'YoutubeMusic', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'Flo', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'Genie', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: 'Vibe', category: 'Music', monthlyPrice: 0, description: '' },
+  { name: '배민클럽', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '카카오톡서랍', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '유튜브프리미엄', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '쿠팡와우', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '이모티콘플러스', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '인텔리제이', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: 'Icloud+', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '컬리', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: '네이버멤버십', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: 'GoogleDrive', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: 'Microsoft 365 Personal', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: 'Notion', category: 'Others', monthlyPrice: 0, description: '' },
+  { name: 'Adobe', category: 'Others', monthlyPrice: 0, description: '' },
 ]
 
 const DEFAULT_DRAFT = {
@@ -120,6 +147,11 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
   const isFetchingList = ref(false)
   const isFetchingDetail = ref(false)
   const isSubmitting = ref(false)
+
+  const categoryOptions = ref([...FALLBACK_CATEGORY_OPTIONS])
+  const serviceLibrary = ref([...FALLBACK_SERVICE_LIBRARY])
+  const isCatalogLoading = ref(false)
+  const catalogLoaded = ref(false)
 
   const reportList = computed(() => [...reports.value].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)))
   const currentReport = computed(() => reportList.value.find((item) => String(item.reportId) === String(activeReportId.value)) || null)
@@ -313,6 +345,84 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     })
   }
 
+
+  const fetchSubscriptionCatalog = async () => {
+    if (catalogLoaded.value || isCatalogLoading.value) {
+      return {
+        categories: categoryOptions.value,
+        services: serviceLibrary.value,
+      }
+    }
+
+    isCatalogLoading.value = true
+
+    try {
+      const categoryResponse = await getSubscriptionCategory()
+      const categories = Array.isArray(categoryResponse?.data?.data)
+        ? categoryResponse.data.data
+        : []
+
+      if (!categories.length) {
+        categoryOptions.value = [...FALLBACK_CATEGORY_OPTIONS]
+        serviceLibrary.value = [...FALLBACK_SERVICE_LIBRARY]
+        catalogLoaded.value = true
+        return {
+          categories: categoryOptions.value,
+          services: serviceLibrary.value,
+        }
+      }
+
+      categoryOptions.value = categories
+        .map((item) => normalizeText(item.categoryName))
+        .filter(Boolean)
+
+      const itemResponses = await Promise.all(
+        categories.map(async (category) => {
+          try {
+            const response = await getSubscriptionItemByCategory(category.categoryId)
+            const items = Array.isArray(response?.data?.data) ? response.data.data : []
+            return items.map((item) => ({
+              name: normalizeText(item.itemName),
+              category: normalizeText(category.categoryName),
+              monthlyPrice: 0,
+              description: '',
+            }))
+          } catch {
+            return []
+          }
+        })
+      )
+
+      const deduped = []
+      const seen = new Set()
+      itemResponses.flat().forEach((item) => {
+        if (!item.name) return
+        const key = `${item.category}::${item.name}`
+        if (seen.has(key)) return
+        seen.add(key)
+        deduped.push(item)
+      })
+
+      serviceLibrary.value = deduped.length ? deduped : [...FALLBACK_SERVICE_LIBRARY]
+      catalogLoaded.value = true
+
+      return {
+        categories: categoryOptions.value,
+        services: serviceLibrary.value,
+      }
+    } catch {
+      categoryOptions.value = [...FALLBACK_CATEGORY_OPTIONS]
+      serviceLibrary.value = [...FALLBACK_SERVICE_LIBRARY]
+      catalogLoaded.value = true
+      return {
+        categories: categoryOptions.value,
+        services: serviceLibrary.value,
+      }
+    } finally {
+      isCatalogLoading.value = false
+    }
+  }
+
   const deleteReportById = async (reportId) => {
     if (!reportId) return false
 
@@ -345,8 +455,10 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     isFetchingList,
     isFetchingDetail,
     isSubmitting,
-    CATEGORY_OPTIONS,
-    SERVICE_LIBRARY,
+    CATEGORY_OPTIONS: categoryOptions,
+    SERVICE_LIBRARY: serviceLibrary,
+    isCatalogLoading,
+    catalogLoaded,
     reportList,
     currentReport,
     generatedReports,
@@ -362,6 +474,7 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     saveReport,
     updateReportTitle,
     deleteReport: deleteReportById,
+    fetchSubscriptionCatalog,
     fetchSavedReports,
     fetchReportDetail,
     ensureReportDetail,
