@@ -1,6 +1,5 @@
 import axios from 'axios'
-
-const STORAGE_KEY = 'subees-auth-session'
+import { handleSessionExpired, isExpiredTokenError, loadSession } from '@/utils/authSession'
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
@@ -12,8 +11,7 @@ const http = axios.create({
 
 http.interceptors.request.use((config) => {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    const session = raw ? JSON.parse(raw) : null
+    const session = loadSession()
     const accessToken = session?.accessToken
     const grantType = session?.grantType ?? 'Bearer'
 
@@ -29,7 +27,13 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error),
+  (error) => {
+    if (isExpiredTokenError(error)) {
+      handleSessionExpired()
+    }
+
+    return Promise.reject(error)
+  },
 )
 
 export default http

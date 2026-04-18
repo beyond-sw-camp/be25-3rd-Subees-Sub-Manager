@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppAsset from '@/components/ui/AppAsset.vue'
@@ -22,7 +22,17 @@ const form = reactive({
 const modalOpen = ref(false)
 const modalKind = ref('mandatory')
 const editingName = ref('')
-const itemForm = reactive({ serviceName: '', category: 'AI', monthlyPrice: 0, description: '' })
+const getDefaultCategory = () => aiStore.CATEGORY_OPTIONS?.[0] || ''
+const itemForm = reactive({ serviceName: '', category: getDefaultCategory(), monthlyPrice: 0, description: '' })
+
+const QUICK_ADD_PRIORITY = ['Netflix', '유튜브프리미엄', 'ChatGpt', 'Spotify', '쿠팡와우', '네이버멤버십', 'Adobe', 'Notion']
+
+onMounted(async () => {
+  await aiStore.fetchSubscriptionCatalog()
+  if (!itemForm.category) {
+    itemForm.category = getDefaultCategory()
+  }
+})
 
 watch(
   () => form,
@@ -33,11 +43,19 @@ watch(
 const totalPrice = computed(() => form.subscriptionItems.reduce((sum, item) => sum + Number(item.monthlyPrice || 0), 0))
 const budgetDiff = computed(() => Number(form.maxMonthlyBudget || 0) - totalPrice.value)
 
+const quickAddItems = computed(() => {
+  const catalog = Array.isArray(aiStore.SERVICE_LIBRARY) ? aiStore.SERVICE_LIBRARY : []
+  const byName = new Map(catalog.map((item) => [item.name, item]))
+  const prioritized = QUICK_ADD_PRIORITY.map((name) => byName.get(name)).filter(Boolean)
+  const remainder = catalog.filter((item) => !QUICK_ADD_PRIORITY.includes(item.name))
+  return [...prioritized, ...remainder].slice(0, 8)
+})
+
 const openModal = (kind, preset = null) => {
   modalKind.value = kind
   editingName.value = ''
   itemForm.serviceName = preset?.name || ''
-  itemForm.category = preset?.category || 'AI'
+  itemForm.category = preset?.category || getDefaultCategory()
   itemForm.monthlyPrice = Number(preset?.monthlyPrice || 0)
   itemForm.description = preset?.description || ''
   modalOpen.value = true
@@ -48,7 +66,7 @@ const openEdit = (kind, name) => {
   editingName.value = name
   const target = form.subscriptionItems.find((item) => item.serviceName === name)
   itemForm.serviceName = target?.serviceName || name
-  itemForm.category = target?.category || 'AI'
+  itemForm.category = target?.category || getDefaultCategory()
   itemForm.monthlyPrice = Number(target?.monthlyPrice || 0)
   itemForm.description = target?.description || ''
   modalOpen.value = true
@@ -235,7 +253,7 @@ const submitAndGenerate = async () => {
             </div>
             <div class="mt-4 flex flex-wrap gap-3">
               <button
-                v-for="item in aiStore.SERVICE_LIBRARY"
+                v-for="item in quickAddItems"
                 :key="item.name"
                 type="button"
                 class="rounded-[18px] border border-[rgba(46,34,10,0.08)] bg-white px-4 py-3 text-left shadow-soft transition hover:border-[rgba(138,106,0,0.34)]"
@@ -301,7 +319,7 @@ const submitAndGenerate = async () => {
         <div class="mt-5 grid gap-4">
           <label class="grid gap-2">
             <span class="form-label">서비스 이름</span>
-            <input v-model="itemForm.serviceName" type="text" class="form-input" placeholder="서비스 이름 입력" list="ai-service-library" />
+            <input v-model="itemForm.serviceName" type="text" class="form-input" placeholder="서비스 이름 입력" autocomplete="off" />
           </label>
 
           <label class="grid gap-2">
@@ -323,14 +341,10 @@ const submitAndGenerate = async () => {
         </div>
 
         <div class="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" class="tertiary-button" @click="itemForm.monthlyPrice = 0">가격 맡기기</button>
           <button type="button" class="secondary-button !min-h-[44px] !rounded-[16px] !px-4" @click="modalOpen = false">취소</button>
           <button type="button" class="primary-button !min-h-[44px] !rounded-[16px] !px-4" @click="saveModal">저장</button>
         </div>
 
-        <datalist id="ai-service-library">
-          <option v-for="item in aiStore.SERVICE_LIBRARY" :key="item.name" :value="item.name" />
-        </datalist>
       </div>
     </div>
   </AppShell>
