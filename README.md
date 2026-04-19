@@ -102,6 +102,7 @@
 - [🔗 API 연동 및 환경 변수](#api-연동-및-환경-변수)
 - [🧾 협업 문서 및 설계 자료](#협업-문서-및-설계-자료)
 - [🖼️ 화면 및 기능 설계서](#화면-및-기능-설계서)
+- [🖼️ DDL](#D-D-L)
 - [📝 프로젝트 회고 및 향후 확장](#프로젝트-회고-및-향후-확장)
 
 ---
@@ -398,6 +399,50 @@ VITE_API_BASE_URL=http://localhost:8080
   <img src="./이미지/작업이미지/화면설계_미리보기.png" alt="화면 설계서" width="640" />
 </div>
 -->
+
+</details>
+
+---
+
+<a id="D-D-L"></a>
+<details>
+<summary><b>🖼️ DDL</b></summary>
+<br>
+
+<details>
+<summary>구독 카테고리</summary>
+...내용...
+</details>
+
+<details>
+<summary>구독 항목</summary>
+...내용...
+</details>
+
+<details>
+<summary>사용자</summary>
+...내용...
+</details>
+
+<details>
+<summary>카드</summary>
+...내용...
+</details>
+
+<details>
+<summary>결제 수단</summary>
+...내용...
+</details>
+
+<details>
+<summary>구독 항목 추가</summary>
+...내용...
+</details>
+
+<details>
+<summary>게시글 등록</summary>
+...내용...
+</details>
 
 </details>
 
