@@ -265,6 +265,6 @@ const submit = async () => {
       </section>
     </div>
 
-    <TermsAgreementModal :open="modalState.open" :type="modalState.type" @close="closeAgreement" @agree="acceptAgreement" />
+    <TermsAgreementModal :open="modalState.open" :type="modalState.type" @close="closeAgreement" @accept="acceptAgreement" />
   </AuthShell>
 </template>
