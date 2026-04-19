@@ -79,7 +79,7 @@ const handleToggleScrap = async () => {
         </div>
       </section>
 
-      <section v-if="successMessage || errorMessage" class="rounded-card border px-5 py-4 text-sm font-medium"
+      <section v-if="successMessage || errorMessage" class="rounded-card border px-4 py-1.5 text-sm font-medium flex items-center"
         :class="successMessage ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'">
         {{ successMessage || errorMessage }}
       </section>

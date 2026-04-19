@@ -22,15 +22,10 @@ const iconName = computed(() => ({
 </script>
 
 <template>
-  <section class="rounded-card border px-5 py-4" :class="toneClass">
-    <div class="flex items-start gap-3">
-      <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/80 ring-1 ring-[rgba(46,34,10,0.08)]">
-        <AppIcon :name="iconName" :size="18" />
-      </div>
-      <div>
-        <p class="text-sm font-bold">{{ title }}</p>
-        <p class="mt-1 text-sm leading-6">{{ message }}</p>
-      </div>
-    </div>
-  </section>
+ <section
+  class="rounded-card border px-4 py-1.5 text-sm font-medium flex items-center"
+  :class="toneClass"
+>
+  {{ message }}
+</section>
 </template>
