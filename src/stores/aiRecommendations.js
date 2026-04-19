@@ -1,5 +1,6 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
+import { useAuthStore } from '@/stores/auth'
 import {
   deleteRecommend,
   getRecommendDetail,
@@ -12,6 +13,7 @@ import { getSubscriptionCategory, getSubscriptionItemByCategory } from '@/api/su
 
 const DRAFT_KEY = 'subees-ai-recommend-draft-v4'
 const ACTIVE_REPORT_KEY = 'subees-ai-recommend-active-v4'
+const LEGACY_STORAGE_KEYS = [DRAFT_KEY, ACTIVE_REPORT_KEY]
 
 const FALLBACK_CATEGORY_OPTIONS = ['OTT', 'AI', 'Music', 'Others']
 const FALLBACK_SERVICE_LIBRARY = [
@@ -81,21 +83,32 @@ const saveJson = (key, value) => {
   }
 }
 
+const removeStorageItem = (key) => {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // ignore storage errors
+  }
+}
+
+const getScopedStorageKey = (key, scope) => `${key}:${scope || 'guest'}`
+
 const toDateLabel = (value) => {
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? '-' : `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
 }
 
-const normalizeSubscriptionItems = (items = []) => items
-  .map((item, index) => ({
-    itemId: item.itemId || createId('item'),
-    serviceName: normalizeText(item.serviceName),
-    category: normalizeText(item.category) || '기타',
-    monthlyPrice: toNumber(item.monthlyPrice),
-    description: normalizeText(item.description),
-    sortOrder: toNumber(item.sortOrder) || index + 1,
-  }))
-  .filter((item) => item.serviceName)
+const normalizeSubscriptionItems = (items = []) =>
+  items
+    .map((item, index) => ({
+      itemId: item.itemId || createId('item'),
+      serviceName: normalizeText(item.serviceName),
+      category: normalizeText(item.category) || '기타',
+      monthlyPrice: toNumber(item.monthlyPrice),
+      description: normalizeText(item.description),
+      sortOrder: toNumber(item.sortOrder) || index + 1,
+    }))
+    .filter((item) => item.serviceName)
 
 const totalPriceOf = (items = []) => items.reduce((sum, item) => sum + toNumber(item.monthlyPrice), 0)
 
@@ -114,8 +127,14 @@ const normalizeReport = (payload = {}) => ({
   generatedContent: normalizeText(payload.generatedContent),
   totalMonthlyPrice: toNumber(payload.totalMonthlyPrice),
   maxMonthlyBudget: toNumber(payload.maxMonthlyBudget),
-  mandatoryItemsJson: typeof payload.mandatoryItemsJson === 'string' ? payload.mandatoryItemsJson : JSON.stringify(normalizeList(payload.mandatoryItems || [])),
-  optionalItemsJson: typeof payload.optionalItemsJson === 'string' ? payload.optionalItemsJson : JSON.stringify(normalizeList(payload.optionalItems || [])),
+  mandatoryItemsJson:
+    typeof payload.mandatoryItemsJson === 'string'
+      ? payload.mandatoryItemsJson
+      : JSON.stringify(normalizeList(payload.mandatoryItems || [])),
+  optionalItemsJson:
+    typeof payload.optionalItemsJson === 'string'
+      ? payload.optionalItemsJson
+      : JSON.stringify(normalizeList(payload.optionalItems || [])),
   reportStatus: normalizeText(payload.reportStatus) || 'SUBMITTED',
   createdAt: payload.createdAt || new Date().toISOString(),
   updatedAt: payload.updatedAt || payload.createdAt || new Date().toISOString(),
@@ -136,12 +155,17 @@ const toSubmitPayload = (draft = {}) => ({
   })),
 })
 
-const getErrorMessage = (error, fallback) => error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback
+const getErrorMessage = (error, fallback) =>
+  error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback
 
 export const useAiRecommendationsStore = defineStore('aiRecommendations', () => {
-  const draft = ref({ ...clone(DEFAULT_DRAFT), ...loadJson(DRAFT_KEY, {}) })
+  const authStore = useAuthStore()
+
+  const storageScope = computed(() => (authStore.userId ? `user-${authStore.userId}` : 'guest'))
+
+  const draft = ref(clone(DEFAULT_DRAFT))
   const reports = ref([])
-  const activeReportId = ref(loadJson(ACTIVE_REPORT_KEY, null))
+  const activeReportId = ref(null)
   const statusMessage = ref('')
   const errorMessage = ref('')
   const isFetchingList = ref(false)
@@ -153,14 +177,50 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
   const isCatalogLoading = ref(false)
   const catalogLoaded = ref(false)
 
-  const reportList = computed(() => [...reports.value].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)))
-  const currentReport = computed(() => reportList.value.find((item) => String(item.reportId) === String(activeReportId.value)) || null)
-  const generatedReports = computed(() => reportList.value.filter((item) => item.reportStatus === 'GENERATED'))
-  const savedReports = computed(() => reportList.value.filter((item) => item.reportStatus === 'SAVED'))
+  const reportList = computed(() =>
+    [...reports.value].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
+  )
+
+  const currentReport = computed(
+    () => reportList.value.find((item) => String(item.reportId) === String(activeReportId.value)) || null,
+  )
+
+  const generatedReports = computed(() =>
+    reportList.value.filter((item) => item.reportStatus === 'GENERATED'),
+  )
+
+  const savedReports = computed(() =>
+    reportList.value.filter((item) => item.reportStatus === 'SAVED'),
+  )
+
   const draftTotalPrice = computed(() => totalPriceOf(draft.value.subscriptionItems || []))
 
-  const persistDraft = () => saveJson(DRAFT_KEY, draft.value)
-  const persistActive = () => saveJson(ACTIVE_REPORT_KEY, activeReportId.value)
+  const persistDraft = () => {
+    saveJson(getScopedStorageKey(DRAFT_KEY, storageScope.value), draft.value)
+  }
+
+  const persistActive = () => {
+    saveJson(getScopedStorageKey(ACTIVE_REPORT_KEY, storageScope.value), activeReportId.value)
+  }
+
+  const clearMessages = () => {
+    statusMessage.value = ''
+    errorMessage.value = ''
+  }
+
+  const resetScopedState = (scope = storageScope.value) => {
+    draft.value = {
+      ...clone(DEFAULT_DRAFT),
+      ...loadJson(getScopedStorageKey(DRAFT_KEY, scope), {}),
+    }
+    activeReportId.value = loadJson(getScopedStorageKey(ACTIVE_REPORT_KEY, scope), null)
+    reports.value = []
+    clearMessages()
+  }
+
+  const clearLegacyStorage = () => {
+    LEGACY_STORAGE_KEYS.forEach((key) => removeStorageItem(key))
+  }
 
   const clearDraftState = () => {
     draft.value = clone(DEFAULT_DRAFT)
@@ -175,11 +235,6 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
   const clearRecommendationSession = () => {
     clearDraftState()
     clearActiveReport()
-  }
-
-  const clearMessages = () => {
-    statusMessage.value = ''
-    errorMessage.value = ''
   }
 
   const setStatusMessage = (message = '') => {
@@ -199,12 +254,17 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
       reportTitle: normalizeText(payload.reportTitle ?? draft.value.reportTitle),
       requestNote: normalizeText(payload.requestNote ?? draft.value.requestNote),
       maxMonthlyBudget: toNumber(payload.maxMonthlyBudget ?? draft.value.maxMonthlyBudget),
-      mandatoryItems: payload.mandatoryItems ? normalizeList(payload.mandatoryItems) : normalizeList(draft.value.mandatoryItems),
-      optionalItems: payload.optionalItems ? normalizeList(payload.optionalItems) : normalizeList(draft.value.optionalItems),
+      mandatoryItems: payload.mandatoryItems
+        ? normalizeList(payload.mandatoryItems)
+        : normalizeList(draft.value.mandatoryItems),
+      optionalItems: payload.optionalItems
+        ? normalizeList(payload.optionalItems)
+        : normalizeList(draft.value.optionalItems),
       subscriptionItems: Array.isArray(payload.subscriptionItems)
         ? normalizeSubscriptionItems(payload.subscriptionItems)
         : normalizeSubscriptionItems(draft.value.subscriptionItems),
     }
+
     persistDraft()
   }
 
@@ -227,12 +287,14 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     persistActive()
   }
 
-  const getReportById = (reportId) => reports.value.find((item) => String(item.reportId) === String(reportId)) || null
+  const getReportById = (reportId) =>
+    reports.value.find((item) => String(item.reportId) === String(reportId)) || null
 
   const fetchReportDetail = async (reportId) => {
     if (!reportId) return null
 
     isFetchingDetail.value = true
+
     try {
       const response = await getRecommendDetail(reportId)
       const data = response?.data?.data ?? {}
@@ -249,10 +311,12 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
 
   const ensureReportDetail = async (reportId) => {
     const cached = getReportById(reportId)
+
     if (cached?.subscriptionItems?.length || cached?.generatedContent) {
       setActiveReport(reportId)
       return cached
     }
+
     return fetchReportDetail(reportId)
   }
 
@@ -269,17 +333,25 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
         return []
       }
 
-      const details = await Promise.all(items.map(async (item) => {
-        try {
-          const detailResponse = await getRecommendDetail(item.reportId)
-          return normalizeReport(detailResponse?.data?.data ?? item)
-        } catch {
-          return normalizeReport(item)
-        }
-      }))
+      const details = await Promise.all(
+        items.map(async (item) => {
+          try {
+            const detailResponse = await getRecommendDetail(item.reportId)
+            return normalizeReport(detailResponse?.data?.data ?? item)
+          } catch {
+            return normalizeReport(item)
+          }
+        }),
+      )
 
       const nonSaved = reports.value.filter((item) => item.reportStatus !== 'SAVED')
-      reports.value = [...details, ...nonSaved.filter((item) => !details.some((detail) => String(detail.reportId) === String(item.reportId)))]
+      reports.value = [
+        ...details,
+        ...nonSaved.filter(
+          (item) => !details.some((detail) => String(detail.reportId) === String(item.reportId)),
+        ),
+      ]
+
       return details
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '추천 기록 목록을 불러오지 못했습니다.'))
@@ -335,11 +407,13 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
 
     try {
       const target = await ensureReportDetail(reportId)
+
       await postRecommendSave({
         reportId: toNumber(reportId),
         reportTitle: normalizeText(overrides.reportTitle || target?.reportTitle),
         generatedContent: normalizeText(overrides.generatedContent || target?.generatedContent),
       })
+
       const report = await fetchReportDetail(reportId)
       setStatusMessage('추천 결과를 저장했습니다.')
       return report
@@ -358,7 +432,6 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
       generatedContent: target?.generatedContent,
     })
   }
-
 
   const fetchSubscriptionCatalog = async () => {
     if (catalogLoaded.value || isCatalogLoading.value) {
@@ -380,6 +453,7 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
         categoryOptions.value = [...FALLBACK_CATEGORY_OPTIONS]
         serviceLibrary.value = [...FALLBACK_SERVICE_LIBRARY]
         catalogLoaded.value = true
+
         return {
           categories: categoryOptions.value,
           services: serviceLibrary.value,
@@ -395,6 +469,7 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
           try {
             const response = await getSubscriptionItemByCategory(category.categoryId)
             const items = Array.isArray(response?.data?.data) ? response.data.data : []
+
             return items.map((item) => ({
               name: normalizeText(item.itemName),
               category: normalizeText(category.categoryName),
@@ -404,11 +479,12 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
           } catch {
             return []
           }
-        })
+        }),
       )
 
       const deduped = []
       const seen = new Set()
+
       itemResponses.flat().forEach((item) => {
         if (!item.name) return
         const key = `${item.category}::${item.name}`
@@ -428,6 +504,7 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
       categoryOptions.value = [...FALLBACK_CATEGORY_OPTIONS]
       serviceLibrary.value = [...FALLBACK_SERVICE_LIBRARY]
       catalogLoaded.value = true
+
       return {
         categories: categoryOptions.value,
         services: serviceLibrary.value,
@@ -436,6 +513,14 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
       isCatalogLoading.value = false
     }
   }
+
+  clearLegacyStorage()
+  resetScopedState()
+
+  watch(storageScope, (nextScope, previousScope) => {
+    if (nextScope === previousScope) return
+    resetScopedState(nextScope)
+  })
 
   const deleteReportById = async (reportId) => {
     if (!reportId) return false
@@ -446,10 +531,12 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     try {
       await deleteRecommend(reportId)
       reports.value = reports.value.filter((item) => String(item.reportId) !== String(reportId))
+
       if (String(activeReportId.value) === String(reportId)) {
         activeReportId.value = reports.value[0]?.reportId || null
         persistActive()
       }
+
       setStatusMessage('추천 결과를 삭제했습니다.')
       return true
     } catch (error) {
