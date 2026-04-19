@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppAsset from '@/components/ui/AppAsset.vue'
+import AppConfirmDialog from '@/components/ui/AppConfirmDialog.vue'
 import { useAiRecommendationsStore } from '@/stores/aiRecommendations'
 
 const route = useRoute()
@@ -12,6 +13,8 @@ const aiStore = useAiRecommendationsStore()
 const reportId = computed(() => route.params.recommendationId || aiStore.activeReportId || '')
 const report = computed(() => aiStore.getReportById(reportId.value))
 const titleInput = ref('')
+const showDeleteConfirm = ref(false)
+const isDeleteSubmitting = ref(false)
 
 const mandatoryItems = computed(() => aiStore.parseItemsJson(report.value?.mandatoryItemsJson))
 const optionalItems = computed(() => aiStore.parseItemsJson(report.value?.optionalItemsJson))
@@ -63,14 +66,29 @@ const saveReport = async () => {
   }
 }
 
-const deleteReport = async () => {
-  if (!report.value || !window.confirm('선택한 추천 기록을 삭제할까요?')) return
+const openDeleteConfirm = () => {
+  if (!report.value) return
+  showDeleteConfirm.value = true
+}
+
+const closeDeleteConfirm = () => {
+  if (isDeleteSubmitting.value) return
+  showDeleteConfirm.value = false
+}
+
+const confirmDelete = async () => {
+  if (!report.value) return
+
+  isDeleteSubmitting.value = true
 
   try {
     await aiStore.deleteReport(report.value.reportId)
+    showDeleteConfirm.value = false
     router.push('/ai-recommendations/history')
   } catch (error) {
     // 스토어에서 에러 상태를 관리합니다.
+  } finally {
+    isDeleteSubmitting.value = false
   }
 }
 </script>
@@ -93,7 +111,7 @@ const deleteReport = async () => {
       <div v-if="report" class="grid gap-6 px-6 py-6 xl:grid-cols-[minmax(0,1.08fr)_360px] xl:px-7 xl:py-7">
         <div class="grid gap-5">
           <article class="dense-card">
-            <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[rgba(46,34,10,0.08)] pb-4">
+            <div class="flex flex-col gap-4 border-b border-[rgba(46,34,10,0.08)] pb-4 lg:flex-row lg:items-end lg:justify-between">
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold text-warning">추천내용 제목</p>
                 <input
@@ -104,10 +122,10 @@ const deleteReport = async () => {
                   @focus="!titleInput && startEdit()"
                 />
               </div>
-              <div class="flex flex-wrap gap-2">
-                <button type="button" class="secondary-button !min-h-[44px] !rounded-[16px] !px-4" @click="saveTitle">제목 저장</button>
-                <button type="button" class="primary-button !min-h-[44px] !rounded-[16px] !px-4" @click="saveReport">저장</button>
-                <button type="button" class="danger-ghost-button !min-h-[44px] !rounded-[16px] !px-4" @click="deleteReport">삭제</button>
+              <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:self-end">
+                <button type="button" class="secondary-button !min-h-[44px] !rounded-[16px] !px-4" :disabled="aiStore.isSubmitting" @click="saveTitle">{{ aiStore.isSubmitting ? '저장 중...' : '제목 저장' }}</button>
+                <button type="button" class="primary-button !min-h-[44px] !rounded-[16px] !px-4" :disabled="aiStore.isSubmitting" @click="saveReport">{{ aiStore.isSubmitting ? '저장 중...' : '저장' }}</button>
+                <button type="button" class="danger-ghost-button !min-h-[44px] !rounded-[16px] !px-4" :disabled="aiStore.isSubmitting || isDeleteSubmitting" @click="openDeleteConfirm">삭제</button>
                 <button type="button" class="tertiary-button !min-h-[44px] !rounded-[16px] !px-4" @click="router.push('/ai-recommendations/history')">돌아가기</button>
               </div>
             </div>
@@ -165,7 +183,7 @@ const deleteReport = async () => {
             <p class="text-sm font-semibold text-warning">안내</p>
             <ul class="mt-3 grid gap-2 text-sm leading-6 text-neutral-500">
               <li>• 제목을 수정한 뒤 저장 버튼으로 기록을 갱신할 수 있습니다.</li>
-              <li>• 삭제 버튼을 누르면 기록이 목록에서 제거됩니다.</li>
+              <li>• 삭제 버튼을 누르면 화면 내 확인 창이 먼저 표시됩니다.</li>
               <li>• 돌아가기 버튼으로 기록 목록으로 다시 이동할 수 있습니다.</li>
             </ul>
           </article>
@@ -179,5 +197,17 @@ const deleteReport = async () => {
         </div>
       </div>
     </section>
+
+    <AppConfirmDialog
+      :open="showDeleteConfirm"
+      title="이 추천 기록을 삭제할까요?"
+      :description="`삭제 후에는 ${report?.reportTitle || '선택한 기록'} 내용을 다시 복구할 수 없습니다.`"
+      confirm-text="삭제"
+      cancel-text="취소"
+      tone="danger"
+      :loading="isDeleteSubmitting"
+      @cancel="closeDeleteConfirm"
+      @confirm="confirmDelete"
+    />
   </AppShell>
 </template>

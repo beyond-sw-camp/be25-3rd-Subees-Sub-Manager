@@ -162,6 +162,21 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
   const persistDraft = () => saveJson(DRAFT_KEY, draft.value)
   const persistActive = () => saveJson(ACTIVE_REPORT_KEY, activeReportId.value)
 
+  const clearDraftState = () => {
+    draft.value = clone(DEFAULT_DRAFT)
+    persistDraft()
+  }
+
+  const clearActiveReport = () => {
+    activeReportId.value = null
+    persistActive()
+  }
+
+  const clearRecommendationSession = () => {
+    clearDraftState()
+    clearActiveReport()
+  }
+
   const clearMessages = () => {
     statusMessage.value = ''
     errorMessage.value = ''
@@ -194,8 +209,7 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
   }
 
   const resetDraft = () => {
-    draft.value = clone(DEFAULT_DRAFT)
-    persistDraft()
+    clearDraftState()
     setStatusMessage('입력 중인 추천 조건을 초기화했습니다.')
   }
 
@@ -469,6 +483,9 @@ export const useAiRecommendationsStore = defineStore('aiRecommendations', () => 
     setErrorMessage,
     updateDraft,
     resetDraft,
+    clearDraftState,
+    clearActiveReport,
+    clearRecommendationSession,
     submitDraft,
     generateRecommendations,
     saveReport,

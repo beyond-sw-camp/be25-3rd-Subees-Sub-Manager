@@ -33,35 +33,35 @@ const handleWindowScroll = () => {
 const summaryStats = computed(() => {
   if (!isAuthed.value) {
     return [
-      { label: '이번 달 결제 금액', value: '248,000원', note: '예상 결제 총액' },
-      { label: '다음 결제', value: '04/18', note: '가장 가까운 일정' },
-      { label: '활성 구독', value: '12개', note: '정기 결제 기준' },
+      { label: '이번 달 결제 예정', value: '248,000원', note: '예상 결제 총액' },
+      { label: '결제일 추적', value: '04/18', note: '가장 가까운 일정' },
+      { label: '지출 흐름 확인', value: '12개', note: '등록된 구독 기준' },
       { label: '절감 가능', value: '12,000원', note: '중복·미사용 추정' },
     ]
   }
 
   if (homePreviewStatus.value === 'loading' || !dashboardStore.hasFetched) {
     return [
-      { label: '이번 달 결제 금액', value: '불러오는 중', note: '개인화된 요약 준비 중' },
-      { label: '다음 결제', value: '-', note: '가장 가까운 일정 계산 중' },
-      { label: '활성 구독', value: '-', note: '등록된 구독 확인 중' },
+      { label: '이번 달 결제 예정', value: '불러오는 중', note: '개인화된 요약 준비 중' },
+      { label: '결제일 추적', value: '-', note: '가장 가까운 일정 계산 중' },
+      { label: '지출 흐름 확인', value: '-', note: '등록된 구독 확인 중' },
       { label: '절감 가능', value: '-', note: '중복·미사용 추정 계산 중' },
     ]
   }
 
   if (homePreviewStatus.value === 'error') {
     return [
-      { label: '이번 달 결제 금액', value: '-', note: '요약 데이터를 불러오지 못했습니다.' },
-      { label: '다음 결제', value: '-', note: '잠시 후 다시 확인해주세요.' },
-      { label: '활성 구독', value: '-', note: '대시보드에서 다시 조회할 수 있습니다.' },
+      { label: '이번 달 결제 예정', value: '-', note: '요약 데이터를 불러오지 못했습니다.' },
+      { label: '결제일 추적', value: '-', note: '잠시 후 다시 확인해주세요.' },
+      { label: '지출 흐름 확인', value: '-', note: '대시보드에서 다시 조회할 수 있습니다.' },
       { label: '절감 가능', value: '-', note: '서버 응답을 기다리는 중입니다.' },
     ]
   }
 
   return [
-    { label: '이번 달 결제 금액', value: formatCurrency(dashboardStore.userSummary.monthlyExpectedAmount), note: '예상 결제 총액' },
-    { label: '다음 결제', value: dashboardStore.userSummary.nextPaymentDate, note: dashboardStore.nextPayment.subscriptionName },
-    { label: '활성 구독', value: `${dashboardStore.userSummary.activeSubscriptionCount}개`, note: '정기 결제 기준' },
+    { label: '이번 달 결제 예정', value: formatCurrency(dashboardStore.userSummary.monthlyExpectedAmount), note: '예상 결제 총액' },
+    { label: '결제일 추적', value: dashboardStore.userSummary.nextPaymentDate, note: dashboardStore.nextPayment.subscriptionName },
+    { label: '지출 흐름 확인', value: `${dashboardStore.userSummary.activeSubscriptionCount}개`, note: '등록된 구독 기준' },
     { label: '절감 가능', value: formatCurrency(dashboardStore.userSummary.potentialSavingsAmount), note: '중복·미사용 추정' },
   ]
 })
@@ -86,7 +86,7 @@ const hasHomePreviewError = computed(() => isAuthed.value && homePreviewStatus.v
 
 const introCopy = computed(() => {
   if (!isAuthed.value) {
-    return '넷플릭스부터 ChatGPT까지 흩어진 구독을 한 곳에 모아, 이번 달 결제 금액과 가장 가까운 일정을 바로 확인할 수 있습니다.'
+    return '사용하던 여러 구독을 한 곳에 모아, 이번 달 결제 금액과 가장 가까운 결제일을 바로 확인할 수 있습니다.'
   }
 
   if (isHomePreviewLoading.value || !dashboardStore.hasFetched) {
@@ -102,7 +102,7 @@ const introCopy = computed(() => {
 
 const heroHighlights = computed(() => {
   if (!isAuthed.value) {
-    return ['이번 달 결제 금액 확인', '가장 가까운 결제일 추적', '카테고리별 지출 흐름 정리']
+    return ['이번 달 결제 예정 확인', '가장 가까운 결제일 추적', '지출 흐름 한눈에 확인']
   }
 
   if (isHomePreviewLoading.value || !dashboardStore.hasFetched) {
@@ -121,59 +121,50 @@ const heroHighlights = computed(() => {
 })
 
 const featureCards = [
-  { title: '구독 등록', desc: '서비스명, 금액, 주기, 결제일을 표준 폼으로 정리합니다.', fallback: 'plus' },
-  { title: '결제일 알림', desc: '가까운 결제 일정만 모아 빠르게 확인할 수 있습니다.', fallback: 'bell' },
-  { title: '캘린더', desc: '달력과 리스트를 함께 보며 월별 흐름을 파악합니다.', fallback: 'calendar' },
-  { title: '지출 분석', desc: '월별 흐름과 카테고리 비중을 같은 캘린더 화면에서 확인합니다.', fallback: 'chart' },
-  { title: '카테고리 분류', desc: 'OTT, 음악, AI, 클라우드 비중을 시각적으로 나눕니다.', fallback: 'grid' },
-  { title: '절감 포인트', desc: '중복·미사용 후보를 찾아 정리 우선순위를 제안합니다.', fallback: 'sparkles' },
+  { title: '구독 등록', desc: '서비스명, 결제주기, 금액을 빠르게 입력해 바로 등록할 수 있습니다.', fallback: 'plus' },
+  { title: '결제일 알림', desc: '다가오는 결제 예정일을 모아서 빠르게 확인할 수 있습니다.', fallback: 'bell' },
+  { title: '캘린더', desc: '날짜별 결제 일정과 월간 흐름을 한 화면에서 확인할 수 있습니다.', fallback: 'calendar' },
+  { title: '지출 분석', desc: '카테고리별 소비 금액과 구독 분포를 한눈에 볼 수 있습니다.', fallback: 'chart' },
+  { title: '카테고리 분석', desc: '어떤 카테고리에 지출이 몰려 있는지 비중과 흐름을 기준으로 바로 확인할 수 있습니다.', fallback: 'chart' },
+  { title: '절약 제안', desc: '중복 결제나 사용 빈도가 낮은 구독을 바탕으로 절약 포인트를 빠르게 확인할 수 있습니다.', fallback: 'sparkles' },
 ]
 
 const categories = [
   {
     key: 'ott',
     label: 'OTT',
-    headline: '자주 쓰는 영상 구독을 먼저 정리하세요',
-    description: '넷플릭스, 티빙, 디즈니+, 웨이브처럼 자주 보는 OTT를 한 줄에서 빠르게 스캔할 수 있어요.',
+    headline: '실제 제공 중인 OTT 서비스를 바로 확인할 수 있어요',
+    description: '구독 등록 화면에서 선택 가능한 OTT 항목만 기준으로 맞췄습니다. 영상 구독 서비스를 한 카드에서 빠르게 확인할 수 있습니다.',
     accent: 'rgba(186,107,82,0.14)',
-    services: ['넷플릭스', '티빙', '디즈니+', '웨이브', '직접입력'],
-    layout: 'xl:col-span-4',
+    services: ['Netflix', 'Tving', 'Disney+', 'CoupangPlay', 'Watcha', 'Laftel', 'Wave', 'AppleTv'],
+    layout: 'xl:col-span-6',
   },
   {
     key: 'music',
-    label: '음악',
-    headline: '음악 구독도 같은 방식으로 깔끔하게',
-    description: '멜론, Spotify, 지니, Apple Music을 한 번에 모아서 결제 흐름을 확인할 수 있습니다.',
+    label: 'Music',
+    headline: '실제 제공 중인 음악 구독 항목을 한 번에 확인할 수 있어요',
+    description: '구독 추가 단계에서 바로 선택 가능한 음악 서비스만 반영했습니다. 자주 쓰는 음원 서비스를 한곳에 정리할 수 있습니다.',
     accent: 'rgba(93,130,96,0.14)',
-    services: ['멜론', 'Spotify', '지니', '애플뮤직', '직접입력'],
-    layout: 'xl:col-span-4',
+    services: ['Melon', 'AppleMusic', 'Spotify', 'YoutubeMusic', 'Flo', 'Genie', 'Vibe'],
+    layout: 'xl:col-span-6',
   },
   {
     key: 'ai',
     label: 'AI',
-    headline: '업무형 AI 구독까지 같은 구조로',
-    description: 'ChatGPT, Gemini, Claude처럼 업무에 쓰는 AI 구독도 카테고리별로 바로 묶어볼 수 있어요.',
+    headline: '실제 제공 중인 AI 구독 서비스만 따로 모았습니다',
+    description: 'AI 추천과 함께 사용하는 핵심 AI 서비스 기준으로 구성했습니다. 현재 등록 가능한 항목과 동일한 목록으로 보여줍니다.',
     accent: 'rgba(138,106,0,0.14)',
-    services: ['ChatGPT', 'Gemini', 'Claude', '직접입력'],
+    services: ['ChatGpt', 'Gemini', 'Claude'],
     layout: 'xl:col-span-4',
   },
   {
-    key: 'cloud',
-    label: '클라우드',
-    headline: '보관형 서비스도 결제일 기준으로 관리',
-    description: 'iCloud+, 카카오 톡서랍처럼 클라우드/보관형 구독도 함께 넣어 월별 흐름을 볼 수 있습니다.',
-    accent: 'rgba(199,184,149,0.22)',
-    services: ['iCloud+', '카카오 톡서랍', '직접입력'],
-    layout: 'xl:col-span-6',
-  },
-  {
     key: 'other',
-    label: '그 외',
-    headline: '생활형 멤버십도 빠짐없이 추가',
-    description: '배민클럽, 쿠팡와우, 이모티콘 플러스처럼 생활형 구독도 같은 카드 구조로 정리됩니다.',
+    label: 'Others',
+    headline: '기타 카테고리도 실제 제공 서비스 기준으로 모두 반영했습니다',
+    description: '생활형 멤버십, 생산성 도구, 클라우드 서비스를 따로 분리하지 않고 실제 Others 카테고리 항목 전체를 그대로 보여줍니다.',
     accent: 'rgba(153,140,113,0.16)',
-    services: ['배민클럽', '쿠팡와우', '이모티콘 플러스', '직접입력'],
-    layout: 'xl:col-span-6',
+    services: ['배민클럽', '카카오톡서랍', '유튜브프리미엄', '쿠팡와우', '이모티콘플러스', '인텔리제이', 'Icloud+', '컬리', '네이버멤버십', 'GoogleDrive', 'Microsoft 365 Personal', 'Notion', 'Adobe'],
+    layout: 'xl:col-span-8',
   },
 ]
 
@@ -185,17 +176,17 @@ const steps = [
 ]
 
 const quickMenus = [
-  { label: '대시보드', desc: '이번 달 결제 금액과 다음 결제일 확인', meta: '핵심 요약', to: '/dashboard', icon: 'home' },
-  { label: '구독 추가', desc: '카테고리부터 카드 선택까지 바로 등록', meta: '등록 시작', to: '/subscriptions/new', icon: 'plus' },
-  { label: '결제 캘린더', desc: '날짜별 일정과 월 총액을 한 화면에서 확인', meta: '일정 확인', to: '/calendar', icon: 'calendar' },
-  { label: '구독목록', desc: '서비스명 검색 후 전체 항목을 빠르게 정리', meta: '목록 관리', to: '/subscriptions', icon: 'list' },
+  { label: '구독 추가', desc: '구독 및 카드 정보를 빠르게 등록', meta: '바로 등록', to: '/subscriptions/new', icon: 'plus' },
+  { label: '결제내역 상세', desc: '등록된 구독과 결제 정보를 한눈에 확인', meta: '목록 확인', to: '/subscriptions', icon: 'list' },
+  { label: '결제일정 상세', desc: '날짜별 결제 일정을 빠르게 확인', meta: '일정 확인', to: '/calendar', icon: 'calendar' },
+  { label: '분석 추천', desc: 'AI 추천과 지출 분석 메뉴로 이동', meta: '추천 확인', to: '/ai-recommendations', icon: 'sparkles' },
 ]
 
 const faqs = [
-  { q: '구독은 어디서 등록하나요?', a: '구독 추가 메뉴에서 카테고리, 서비스, 금액, 카드, 결제일을 순서대로 입력하면 됩니다.' },
-  { q: '캘린더는 어디서 보나요?', a: '결제 캘린더 페이지에서 월별 일정과 날짜별 결제 항목을 함께 볼 수 있습니다.' },
-  { q: '카드 이미지를 고를 수 있나요?', a: '구독 추가와 수정 화면에서 카드 이미지를 선택하거나 직접 입력할 수 있습니다.' },
-  { q: '로그인 후 메인 화면이 달라지나요?', a: '로그인 후에는 실제 등록한 구독 데이터가 대시보드와 연동되어 표시됩니다.' },
+  { q: '구독은 어디서 등록하나요?', a: '구독 추가 메뉴에서 카테고리, 서비스, 카드, 결제일을 순서대로 입력하면 됩니다.' },
+  { q: '카드 이미지를 고를 수 있나요?', a: '결제 카드 메뉴에서 직접 카드 이미지를 선택해 등록할 수 있습니다.' },
+  { q: '로그인 후 홈 화면 내용이 달라지나요?', a: '로그인 후에는 실제 등록한 구독 데이터가 대시보드와 연동되어 표시됩니다.' },
+  { q: '로그인 전 홈 화면 데이터는 실제인가요?', a: '로그인 전에는 서비스 소개용 예시 프리뷰 데이터가 표시됩니다.' },
 ]
 
 const go = (path, needAuth = false) => {
@@ -207,11 +198,11 @@ const go = (path, needAuth = false) => {
 }
 
 const start = () => {
-  router.push(isAuthed.value ? '/dashboard' : '/signup')
+  router.push(isAuthed.value ? '/subscriptions' : '/signup')
 }
 
 const openSupportAction = () => {
-  router.push(isAuthed.value ? '/subscriptions/new' : '/login')
+  router.push(isAuthed.value ? '/dashboard' : '/login')
 }
 
 const handleLogout = async () => {
@@ -295,7 +286,7 @@ onBeforeUnmount(() => {
             <div class="min-w-0 flex-1">
               <div class="mt-1 inline-flex rounded-full bg-[rgba(242,210,33,0.16)] px-3 py-1 text-xs font-extrabold text-[#8A6A00]">Subees Preview</div>
               <h1 class="mt-5 text-[34px] font-bold leading-[1.14] tracking-[-0.05em] text-neutral-900 lg:text-[52px]">
-                흩어진 구독을 한 곳에 모아,<br class="hidden lg:block" />이번 달 결제와 다음 일정을 바로 확인하세요.
+                다양한 구독정보를 한곳에서,<br class="hidden lg:block" />Subees
               </h1>
               <p class="mt-4 max-w-[760px] text-[16px] leading-8 text-neutral-600">{{ introCopy }}</p>
 
@@ -310,11 +301,11 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="mt-7 flex flex-wrap items-center gap-3">
-                <button class="primary-button" @click="start">{{ isAuthed ? '대시보드 열기' : '무료로 시작하기' }}</button>
-                <button class="secondary-button" @click="openSupportAction">{{ isAuthed ? '구독 추가' : '로그인' }}</button>
-                <button v-if="isAuthed" class="tertiary-button" @click="go('/calendar', true)">결제 캘린더</button>
+                <button class="primary-button" @click="start">{{ isAuthed ? '구독 목록 보기' : '무료로 시작하기' }}</button>
+                <button class="secondary-button" @click="openSupportAction">{{ isAuthed ? '지출 분석 보기' : '로그인' }}</button>
+                <button v-if="isAuthed" class="tertiary-button" @click="go('/calendar', true)">결제 일정 보기</button>
               </div>
-              <p class="mt-3 cta-helper">{{ isAuthed ? '이번 달 결제 요약을 확인한 뒤, 구독 추가나 결제 캘린더로 바로 이동할 수 있습니다.' : '회원가입 후 바로 로그인해 대시보드와 결제 캘린더를 이용할 수 있습니다.' }}</p>
+              <p class="mt-3 cta-helper">{{ isAuthed ? '등록된 구독과 지출 흐름을 한 화면에서 확인한 뒤 필요한 메뉴로 바로 이동할 수 있습니다.' : '회원가입 후 바로 로그인해 구독 목록과 지출 흐름을 확인할 수 있습니다.' }}</p>
 
               <div class="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:gap-4">
                 <article v-for="stat in summaryStats" :key="stat.label" class="ghost-card p-5">
@@ -329,7 +320,7 @@ onBeforeUnmount(() => {
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="eyebrow-label">Preview</p>
-                  <h2 class="mt-2 text-[24px] font-bold tracking-[-0.04em] text-neutral-900">{{ isAuthed ? '내 구독 프리뷰' : '이번 달 요약' }}</h2>
+                  <h2 class="mt-2 text-[24px] font-bold tracking-[-0.04em] text-neutral-900">{{ isAuthed ? '실제 요약을 한눈에 확인' : '실제 요약을 한눈에 확인' }}</h2>
                 </div>
                 <span class="chip-button is-selected !min-h-[30px] !px-3 !text-xs">{{ isAuthed ? '실데이터' : '미리보기' }}</span>
               </div>
@@ -381,7 +372,7 @@ onBeforeUnmount(() => {
 
               <div class="mt-5 grid gap-3">
                 <button class="primary-button !min-h-[48px] w-full" @click="go('/subscriptions', true)">구독 목록 보기</button>
-                <button class="secondary-button !min-h-[48px] w-full" @click="go('/calendar', true)">결제 캘린더 보기</button>
+                <button class="secondary-button !min-h-[48px] w-full" @click="go('/dashboard', true)">지출 분석 보기</button>
               </div>
             </aside>
           </div>
@@ -435,8 +426,8 @@ onBeforeUnmount(() => {
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p class="eyebrow-label">카테고리</p>
-                <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">OTT · 음악 · AI · 클라우드까지 한 번에</h2>
-                <p class="mt-2 max-w-[780px] body-copy">카테고리 이미지와 실제 서비스 로고를 함께 배치해 원하는 구독을 빠르게 찾을 수 있게 구성했습니다.</p>
+                <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">구독 관리에 필요한 카테고리를 한눈에 확인해보세요</h2>
+                <p class="mt-2 max-w-[780px] body-copy">현재 실제로 제공 중인 카테고리와 서비스 항목 기준으로 맞춰두었고, 각 서비스 로고가 모두 보이도록 구성했습니다.</p>
               </div>
               <span class="chip-button is-selected !min-h-[34px]">대표 카테고리</span>
             </div>
@@ -490,7 +481,7 @@ onBeforeUnmount(() => {
                             icon-class="text-[#8A6A00]"
                           />
                         </span>
-                        <span>{{ service === '직접입력' ? '직접 입력' : service }}</span>
+                        <span>{{ service }}</span>
                       </span>
                     </div>
                   </div>
@@ -503,8 +494,8 @@ onBeforeUnmount(() => {
         <section class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <div class="shell-card p-6 lg:p-8">
             <p class="eyebrow-label">사용 흐름</p>
-            <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">등록부터 확인까지 한 번에 이어지는 구조입니다</h2>
-            <p class="mt-2 body-copy">한 화면마다 해야 할 일을 줄이고, 다음 화면으로 자연스럽게 이어지도록 구성했습니다.</p>
+            <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">등록부터 확인까지 한번에 이어지는 구조</h2>
+            <p class="mt-2 body-copy">가입 후 구독 등록, 결제 확인, 분석까지 자연스럽게 이어지도록 구성했습니다.</p>
             <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <article v-for="step in steps" :key="step.n" class="ghost-card flex h-full flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-soft">
                 <div class="flex items-center gap-3">
@@ -524,7 +515,7 @@ onBeforeUnmount(() => {
             <div class="flex items-end justify-between gap-3">
               <div>
                 <p class="eyebrow-label">빠른 이동</p>
-                <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">지금 바로 필요한 메뉴로 이동하세요</h2>
+                <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">지금 바로 필요한 메뉴 이동</h2>
               </div>
               <span class="guide-pill">핵심 메뉴 4개</span>
             </div>
@@ -546,7 +537,7 @@ onBeforeUnmount(() => {
         <section class="section-card">
           <div class="border-b border-[rgba(46,34,10,0.08)] pb-5">
             <p class="eyebrow-label">FAQ</p>
-            <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">자주 찾는 질문을 먼저 모았습니다</h2>
+            <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">자주 찾는 질문을 확인해보세요</h2>
           </div>
           <div class="mt-5 grid gap-3">
             <article v-for="faq in faqs" :key="faq.q" class="ghost-card p-5">

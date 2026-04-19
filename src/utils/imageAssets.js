@@ -35,7 +35,7 @@ const CATEGORY_MAP = defineMap([
   [['music', '음악', '뮤직'], '/image/Category/music.png'],
   [['ai', 'AI'], '/image/Category/ai.png'],
   [['cloud', 'Cloud', '클라우드'], '/image/Category/cloud.png'],
-  [['etc', 'other', '기타', '그외', '그 외'], '/image/Category/other.png'],
+  [['etc', 'other', 'others', '기타', '그외', '그 외'], '/image/Category/other.png'],
 ])
 
 const SERVICE_ALIASES = [
@@ -44,7 +44,7 @@ const SERVICE_ALIASES = [
   [['왓챠', 'Watcha'], '/image/ott/Watcha.png'],
   [['웨이브', 'Wavve', 'Wave'], '/image/ott/wave.png'],
   [['디즈니+', '디즈니플러스', 'Disney+', 'Disney Plus', 'DisneyPlus'], '/image/ott/disney.png'],
-  [['애플TV+', '애플 TV+', 'Apple TV+', 'Apple TV Plus', 'AppleTV+', 'AppleTVPlus'], '/image/ott/apple_tv.png'],
+  [['애플TV+', '애플 TV+', 'Apple TV+', 'Apple TV Plus', 'AppleTV+', 'AppleTVPlus', 'AppleTv'], '/image/ott/apple_tv.png'],
   [['쿠팡플레이', 'Coupang Play', 'CoupangPlay'], '/image/ott/coupangPlay.png'],
   [['쿠팡TV', '쿠팡 티비', 'Coupang TV', 'CoupangTV'], '/image/ott/coupang_tv.png'],
   [['라프텔', 'Laftel'], '/image/ott/laftel.png'],
@@ -57,7 +57,7 @@ const SERVICE_ALIASES = [
   [['플로', 'FLO'], '/image/music/flo.png'],
   [['유튜브 뮤직', '유튜브뮤직', 'YouTube Music', 'Youtube Music', 'YouTubeMusic', 'YoutubeMusic'], '/image/music/youtube_music.png'],
 
-  [['ChatGPT', 'Chat GPT', 'ChatGPT Plus', 'ChatGPTPlus'], '/image/ai/chatgpt.png'],
+  [['ChatGPT', 'Chat GPT', 'ChatGPT Plus', 'ChatGPTPlus', 'ChatGpt'], '/image/ai/chatgpt.png'],
   [['Gemini', 'Gemini Advanced', 'GeminiAdvanced'], '/image/ai/gemini.png'],
   [['Claude', 'Claude Pro', 'ClaudePro'], '/image/ai/claude.png'],
 
@@ -65,13 +65,13 @@ const SERVICE_ALIASES = [
   [['카카오 톡서랍', '카카오톡서랍', '톡서랍', 'surrap'], '/image/another/surrap.png'],
   [['구글 드라이브', '구글드라이브', 'Google Drive', 'GoogleDrive'], '/image/another/google_drive.png'],
   [['iCloud+', 'iCloud Plus', 'iCloudPlus', 'ICLOUD+', 'ICLOUDPLUS'], '/image/another/icloud.png'],
-  [['이모티콘 플러스', '이모티콘플러스', 'iemo'], '/image/another/iemo.png'],
+  [['이모티콘 플러스', '이모티콘플러스', '카카오 이모티콘+', '카카오이모티콘+', '카카오 이모티콘 플러스', '카카오이모티콘플러스', 'iemo', '이모티콘+', '카카오이모티콘'], '/image/another/iemo.png'],
   [['배민클럽', 'Baemin Club', 'BaeminClub'], '/image/another/baeminclub.png'],
   [['인텔리제이', 'IntelliJ', 'IntelliJ IDEA', 'IntelliJIDEA'], '/image/another/intellij.png'],
   [['컬리', '컬리멤버스', 'Kurly', 'Kurly Membership', 'KurlyMembership'], '/image/another/kurly.png'],
   [['마이크로소프트 오피스', '오피스 365', '오피스365', 'Microsoft Office', 'MS Office', 'MSOffice', 'Microsoft 365', 'Microsoft365', 'Microsoft 365 Personal', 'Microsoft365Personal', 'MS 365', 'MS365'], '/image/another/ms_office.png'],
   [['노션', 'Notion'], '/image/another/notion.png'],
-  [['네이버멤버십', '네이버멤버쉽', '네이버맵버십', '네이버맵버쉽', '네이버플러스', '네이버 플러스', 'Npay+', 'N Pay+', 'Npay Plus', 'NpayPlus', '네이버페이 플러스', '네이버페이플러스'], '/image/another/npay+.png'],
+  [['네이버멤버십', '네이버 멤버십', '네이버멤버쉽', '네이버맵버십', '네이버맵버쉽', '네이버플러스', '네이버 플러스', '네이버플러스멤버십', '네이버 플러스 멤버십', 'Npay+', 'N Pay+', 'Npay Plus', 'NpayPlus', '네이버페이 플러스', '네이버페이플러스'], '/image/another/npay+.png'],
   [['쿠팡와우', 'Coupang Wow', 'CoupangWow', 'wow'], '/image/another/wow.png'],
   [['유튜브 프리미엄', '유튜브프리미엄', 'YouTube Premium', 'Youtube Premium', 'YouTubePremium', 'YoutubePremium'], '/image/another/youtube_premium.png'],
 ]
@@ -130,8 +130,8 @@ const CORE_MAP = defineMap([
   [['registration', '구독 등록', '구독등록', '구독 추가', '구독추가'], '/image/core_images/registration.png'],
   [['alarm', '알림', '결제일 알림', '결제알림'], '/image/core_images/alarm.png'],
   [['calendar', 'calender', '결제 캘린더', '캘린더'], '/image/core_images/calender.png'],
-  [['analyze', 'analysis', '지출 분석', '지출분석', '소비 분석', '대시보드', '카테고리 분류', '카테고리분류'], '/image/core_images/analyze.png'],
-  [['reduction', '절감', '절감 제안', '절감제안', '절감 포인트', '절감포인트'], '/image/core_images/reduction.png'],
+  [['analyze', 'analysis', '지출 분석', '지출분석', '소비 분석', '대시보드', '카테고리 분류', '카테고리분류', '카테고리 분석', '카테고리분석'], '/image/core_images/analyze.png'],
+  [['reduction', '절감', '절감 제안', '절감제안', '절감 포인트', '절감포인트', '절약 제안', '절약제안'], '/image/core_images/reduction.png'],
   [['inventory', 'list', '구독목록', '구독 목록', 'faq', '전체 기능', '커뮤니티', 'FAQ'], '/image/core_images/inventory.png'],
 ])
 
