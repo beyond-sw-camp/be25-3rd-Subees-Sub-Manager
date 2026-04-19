@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppAsset from '@/components/ui/AppAsset.vue'
+import AppProgressDialog from '@/components/ui/AppProgressDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAiRecommendationsStore } from '@/stores/aiRecommendations'
 
@@ -26,6 +27,14 @@ const getDefaultCategory = () => aiStore.CATEGORY_OPTIONS?.[0] || ''
 const itemForm = reactive({ serviceName: '', category: getDefaultCategory(), monthlyPrice: 0, description: '' })
 
 const QUICK_ADD_PRIORITY = ['Netflix', '유튜브프리미엄', 'ChatGpt', 'Spotify', '쿠팡와우', '네이버멤버십', 'Adobe', 'Notion']
+const generationSteps = ['추천 요청 저장', 'AI 추천 생성', '결과 화면 이동']
+const progressState = reactive({
+  open: false,
+  title: '',
+  description: '',
+  percent: 0,
+  currentStep: 0,
+})
 
 onMounted(async () => {
   await aiStore.fetchSubscriptionCatalog()
@@ -133,12 +142,33 @@ const submitAndGenerate = async () => {
     return
   }
 
+  progressState.open = true
+  progressState.title = '추천 조건을 정리하고 있습니다'
+  progressState.description = '입력한 구독 조건을 저장한 뒤 추천 조합 생성을 시작합니다.'
+  progressState.percent = 20
+  progressState.currentStep = 1
+
   try {
     const report = await aiStore.submitDraft()
+
+    progressState.title = 'AI가 추천 조합을 생성하고 있습니다'
+    progressState.description = '선택한 서비스와 예산을 기준으로 추천 결과를 계산하고 있습니다.'
+    progressState.percent = 68
+    progressState.currentStep = 2
+
     const generated = await aiStore.generateRecommendations(report.reportId)
+
+    progressState.title = '결과 화면으로 이동하고 있습니다'
+    progressState.description = '생성된 추천 결과를 불러오는 중입니다.'
+    progressState.percent = 100
+    progressState.currentStep = 3
+
+    await new Promise((resolve) => window.setTimeout(resolve, 320))
     router.push({ path: '/ai-recommendations/results', query: { reportId: generated.reportId } })
   } catch (error) {
     // 스토어에서 상태 메시지를 관리합니다.
+  } finally {
+    progressState.open = false
   }
 }
 </script>
@@ -299,12 +329,22 @@ const submitAndGenerate = async () => {
               </div>
             </div>
 
-            <button type="button" class="primary-button mt-5 w-full" @click="submitAndGenerate">실행</button>
+            <button type="button" class="primary-button mt-5 w-full" :disabled="aiStore.isSubmitting" @click="submitAndGenerate">{{ aiStore.isSubmitting ? '실행 중...' : '실행' }}</button>
             <button type="button" class="secondary-button mt-3 w-full" @click="resetForm">초기화</button>
           </article>
         </aside>
       </div>
     </section>
+
+
+    <AppProgressDialog
+      :open="progressState.open"
+      :title="progressState.title"
+      :description="progressState.description"
+      :percent="progressState.percent"
+      :steps="generationSteps"
+      :current-step="progressState.currentStep"
+    />
 
     <div v-if="modalOpen" class="fixed inset-0 z-50 grid place-items-center bg-[rgba(30,24,13,0.38)] px-4">
       <div class="w-full max-w-[440px] rounded-modal border border-[rgba(46,34,10,0.08)] bg-neutral-25 p-5 shadow-floating">

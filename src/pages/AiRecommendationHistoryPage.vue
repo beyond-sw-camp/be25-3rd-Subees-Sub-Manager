@@ -2,11 +2,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
+import AppConfirmDialog from '@/components/ui/AppConfirmDialog.vue'
 import { useAiRecommendationsStore } from '@/stores/aiRecommendations'
 
 const router = useRouter()
 const aiStore = useAiRecommendationsStore()
 const keyword = ref('')
+const showDeleteConfirm = ref(false)
+const isDeleteSubmitting = ref(false)
+const targetReportId = ref(null)
 
 const savedReports = computed(() => aiStore.savedReports)
 const filteredReports = computed(() => {
@@ -17,6 +21,7 @@ const filteredReports = computed(() => {
     return report.reportTitle.toLowerCase().includes(query) || joinedNames.includes(query)
   })
 })
+const targetReport = computed(() => filteredReports.value.find((item) => String(item.reportId) === String(targetReportId.value)) || savedReports.value.find((item) => String(item.reportId) === String(targetReportId.value)) || null)
 
 onMounted(async () => {
   try {
@@ -31,13 +36,30 @@ const openDetail = (reportId) => {
   router.push(`/ai-recommendations/${reportId}`)
 }
 
-const removeReport = async (reportId) => {
-  if (!window.confirm('선택한 추천 기록을 삭제할까요?')) return
+const openDeleteConfirm = (reportId) => {
+  targetReportId.value = reportId
+  showDeleteConfirm.value = true
+}
+
+const closeDeleteConfirm = () => {
+  if (isDeleteSubmitting.value) return
+  showDeleteConfirm.value = false
+  targetReportId.value = null
+}
+
+const confirmDelete = async () => {
+  if (!targetReportId.value) return
+
+  isDeleteSubmitting.value = true
 
   try {
-    await aiStore.deleteReport(reportId)
+    await aiStore.deleteReport(targetReportId.value)
+    showDeleteConfirm.value = false
+    targetReportId.value = null
   } catch (error) {
     // 스토어에서 에러 상태를 관리합니다.
+  } finally {
+    isDeleteSubmitting.value = false
   }
 }
 </script>
@@ -82,9 +104,9 @@ const removeReport = async (reportId) => {
               </div>
             </div>
 
-            <div class="mt-4 flex flex-wrap justify-end gap-2">
+            <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
               <button type="button" class="secondary-button !min-h-[44px] !rounded-[16px] !px-4" @click="openDetail(report.reportId)">상세 보기</button>
-              <button type="button" class="danger-ghost-button !min-h-[44px] !rounded-[16px] !px-4" @click="removeReport(report.reportId)">삭제</button>
+              <button type="button" class="danger-ghost-button !min-h-[44px] !rounded-[16px] !px-4" :disabled="isDeleteSubmitting" @click="openDeleteConfirm(report.reportId)">삭제</button>
             </div>
           </article>
         </div>
@@ -95,5 +117,17 @@ const removeReport = async (reportId) => {
         </div>
       </div>
     </section>
+
+    <AppConfirmDialog
+      :open="showDeleteConfirm"
+      title="이 추천 기록을 삭제할까요?"
+      :description="`삭제 후에는 ${targetReport?.reportTitle || '선택한 기록'} 내용을 다시 복구할 수 없습니다.`"
+      confirm-text="삭제"
+      cancel-text="취소"
+      tone="danger"
+      :loading="isDeleteSubmitting"
+      @cancel="closeDeleteConfirm"
+      @confirm="confirmDelete"
+    />
   </AppShell>
 </template>
