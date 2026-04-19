@@ -102,7 +102,7 @@
 - [🔗 API 연동 및 환경 변수](#api-연동-및-환경-변수)
 - [🧾 협업 문서 및 설계 자료](#협업-문서-및-설계-자료)
 - [🖼️ 화면 및 기능 설계서](#화면-및-기능-설계서)
-- [🖼️ DDL](#D-D-L)
+- [✅ 개발 산출물 및 검증](#개-발-산-출-물-검-증)
 - [📝 프로젝트 회고 및 향후 확장](#프로젝트-회고-및-향후-확장)
 
 ---
@@ -404,43 +404,88 @@ VITE_API_BASE_URL=http://localhost:8080
 
 ---
 
-<a id="D-D-L"></a>
+<a id="개-발-산-출-물-검-증"></a>
 <details>
-<summary><b>🖼️ DDL</b></summary>
+<summary><b>✅ 개발 산출물 및 검증</b></summary>
 <br>
 
 <details>
-<summary>구독 카테고리</summary>
+<summary>사용자 계정관리</summary>
 ...내용...
 </details>
 
 <details>
-<summary>구독 항목</summary>
+<summary>마이페이지</summary>
 ...내용...
 </details>
 
 <details>
-<summary>사용자</summary>
+<summary>구독 항목 등록</summary>
 ...내용...
 </details>
 
 <details>
-<summary>카드</summary>
+<summary>구독 항목 조회</summary>
 ...내용...
 </details>
 
 <details>
-<summary>결제 수단</summary>
+<summary>결제 카드 관리</summary>
 ...내용...
 </details>
 
 <details>
-<summary>구독 항목 추가</summary>
+<summary>결제 수단 조회</summary>
+...내용...
+</details>
+
+<details>
+<summary>결제 캘린더</summary>
+...내용...
+</details>
+
+<details>
+<summary>소비 분석</summary>
+...내용...
+</details>
+
+<details>
+<summary>게시글 조회</summary>
 ...내용...
 </details>
 
 <details>
 <summary>게시글 등록</summary>
+...내용...
+</details>
+
+<details>
+<summary>게시글 저장 및 공유</summary>
+...내용...
+</details>
+
+<details>
+<summary>게시글 관리</summary>
+...내용...
+</details>
+
+<details>
+<summary>구독 알림</summary>
+...내용...
+</details>
+
+<details>
+<summary>사용자 입력 및 설정</summary>
+...내용...
+</details>
+
+<details>
+<summary>프롬프트/오픈api</summary>
+...내용...
+</details>
+
+<details>
+<summary>예상질문</summary>
 ...내용...
 </details>
 
