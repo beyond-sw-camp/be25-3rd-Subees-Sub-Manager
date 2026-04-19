@@ -1,7 +1,5 @@
 <script setup>
 import { computed } from 'vue'
-import AppAsset from '@/components/ui/AppAsset.vue'
-import AppStatePanel from '@/components/ui/AppStatePanel.vue'
 
 const props = defineProps({
   items: {
@@ -10,7 +8,7 @@ const props = defineProps({
   },
   maxAmount: {
     type: Number,
-    default: 1,
+    default: 0,
   },
   view: {
     type: String,
@@ -26,7 +24,7 @@ const props = defineProps({
   },
   totalAmount: {
     type: Number,
-    default: null,
+    default: 0,
   },
   previousTotalAmount: {
     type: Number,
@@ -39,142 +37,112 @@ const emit = defineEmits(['change-view'])
 const formatCurrency = (value) =>
   `${new Intl.NumberFormat('ko-KR').format(Number(value || 0))}원`
 
-const getBarWidth = (amount, maxAmount) => {
-  const safeMax = Number(maxAmount || 0)
-  const safeAmount = Number(amount || 0)
+const normalizedItems = computed(() => {
+  const baseItems = (props.items || [])
+    .map((item, index) => ({
+      key: item.key || `item-${index}`,
+      label: item.label || item.subscriptionName || '-',
+      totalAmount: Number(item.totalAmount || item.paymentAmount || 0),
+    }))
+    .filter((item) => item.totalAmount > 0)
 
-  if (safeMax <= 0) return '6%'
-  return `${Math.max((safeAmount / safeMax) * 100, 6)}%`
-}
+  if (baseItems.length) return baseItems
 
-const resolvedTotalAmount = computed(() => {
-  if (props.totalAmount !== null && props.totalAmount !== undefined) {
-    return Number(props.totalAmount || 0)
+  if (props.view === 'MONTHLY') {
+    return (props.paymentPreview || [])
+      .map((item, index) => ({
+        key: item.paymentId || `preview-${index}`,
+        label: item.subscriptionName || '-',
+        totalAmount: Number(item.paymentAmount || 0),
+      }))
+      .filter((item) => item.totalAmount > 0)
   }
 
-  return props.items.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
+  return []
 })
 
-const topItem = computed(() => {
-  if (!props.items.length) return null
+const resolvedMaxAmount = computed(() => {
+  if (Number(props.maxAmount || 0) > 0) return Number(props.maxAmount || 0)
 
-  return props.items.reduce((max, current) =>
-    Number(current.totalAmount || 0) > Number(max.totalAmount || 0) ? current : max,
+  if (!normalizedItems.value.length) return 0
+
+  return normalizedItems.value.reduce(
+    (max, item) => Math.max(max, item.totalAmount),
+    0,
   )
 })
 
+const topItem = computed(() => {
+  if (!normalizedItems.value.length) return null
+
+  return [...normalizedItems.value].sort(
+    (a, b) => b.totalAmount - a.totalAmount,
+  )[0]
+})
+
 const averageAmount = computed(() => {
-  if (!props.items.length) return 0
-  return Math.round(resolvedTotalAmount.value / props.items.length)
+  if (!normalizedItems.value.length) return 0
+
+  const total = normalizedItems.value.reduce(
+    (sum, item) => sum + item.totalAmount,
+    0,
+  )
+
+  return Math.floor(total / normalizedItems.value.length)
 })
 
-const changeInfo = computed(() => {
-  const previous = Number(props.previousTotalAmount)
-
-  if (
-    props.previousTotalAmount === null ||
-    props.previousTotalAmount === undefined ||
-    Number.isNaN(previous) ||
-    previous <= 0
-  ) {
-    return {
-      value: '-',
-      description: props.view === 'YEARLY' ? '전년 비교 데이터 없음' : '전월 비교 데이터 없음',
-    }
-  }
-
-  const current = resolvedTotalAmount.value
-  const diff = current - previous
-  const rate = ((Math.abs(diff) / previous) * 100).toFixed(1)
-
-  if (diff === 0) {
-    return {
-      value: '0%',
-      description: '직전 구간과 동일',
-    }
-  }
-
-  return {
-    value: `${diff > 0 ? '+' : '-'}${rate}%`,
-    description: `${formatCurrency(Math.abs(diff))} ${diff > 0 ? '증가' : '감소'}`,
-  }
+const changeAmount = computed(() => {
+  if (props.previousTotalAmount == null) return null
+  return Number(props.totalAmount || 0) - Number(props.previousTotalAmount || 0)
 })
 
-const summaryCards = computed(() => [
-  {
-    key: 'total',
-    title: props.view === 'YEARLY' ? '연간 총 지출' : '선택 구간 총 지출',
-    value: formatCurrency(resolvedTotalAmount.value),
-    description: props.view === 'YEARLY' ? '연간 흐름 기준 집계' : '현재 막대 합산 기준',
-  },
-  {
-    key: 'peak',
-    title: props.view === 'YEARLY' ? '최고 지출 구간' : '최고 지출 구간',
-    value: topItem.value
-      ? `${topItem.value.label} · ${formatCurrency(topItem.value.totalAmount)}`
-      : '-',
-    description: topItem.value ? '가장 큰 금액이 발생한 구간' : '표시할 데이터 없음',
-  },
-  {
-    key: 'avg',
-    title: '평균 지출',
-    value: props.items.length ? formatCurrency(averageAmount.value) : '-',
-    description: props.items.length ? `${props.items.length}개 구간 평균` : '표시할 데이터 없음',
-  },
-  {
-    key: 'change',
-    title: props.view === 'YEARLY' ? '전년 대비' : '전월 대비',
-    value: changeInfo.value.value,
-    description: changeInfo.value.description,
-  },
-])
+const changeRate = computed(() => {
+  const previous = Number(props.previousTotalAmount || 0)
+  const current = Number(props.totalAmount || 0)
 
-const sectionTitle = computed(() =>
-  props.view === 'YEARLY' ? '연간 소비 분석' : '월별 소비 분석',
-)
+  if (props.previousTotalAmount == null) return null
+  if (previous === 0) return current > 0 ? 100 : 0
 
-const sectionDescription = computed(() =>
-  props.view === 'YEARLY'
-    ? '연간 기준으로 금액 흐름과 피크 구간을 한눈에 확인해 보세요.'
-    : '월별 기준으로 금액 흐름과 피크 구간을 한눈에 확인해 보세요.',
-)
+  return Number((((current - previous) / previous) * 100).toFixed(1))
+})
 
-const itemMetaText = (item) => {
-  if (item.count !== undefined && item.count !== null) return `${item.count}건`
-  if (item.totalCount !== undefined && item.totalCount !== null) return `${item.totalCount}건`
-  if (item.subscriptionCount !== undefined && item.subscriptionCount !== null) {
-    return `${item.subscriptionCount}개 서비스`
-  }
-  return ''
+const barWidth = (amount) => {
+  const max = resolvedMaxAmount.value
+  if (!max || amount <= 0) return '0%'
+  return `${Math.max((amount / max) * 100, 6)}%`
 }
 </script>
 
 <template>
-  <section class="shell-card p-6">
-    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[rgba(46,34,10,0.08)] pb-5">
+  <section class="section-card !p-5 lg:!p-6">
+    <div class="flex items-start justify-between gap-4 border-b border-[rgba(46,34,10,0.08)] pb-4">
       <div>
         <p class="text-sm font-semibold text-[#8A6A00]">소비 분석</p>
-        <h2 class="mt-2 text-[24px] font-bold tracking-[-0.03em] text-neutral-900">
-          {{ sectionTitle }}
+        <h2 class="mt-2 text-[22px] font-bold tracking-[-0.03em] text-neutral-900">
+          {{ view === 'YEARLY' ? '연간 소비 분석' : '월별 소비 분석' }}
         </h2>
-        <p class="mt-2 text-sm leading-6 text-neutral-500">
-          {{ sectionDescription }}
+        <p class="mt-2 text-xs leading-5 text-neutral-400">
+          {{
+            view === 'YEARLY'
+              ? '연간 기준으로 카테고리 소비 비중을 한눈에 확인해 보세요.'
+              : '월별 기준으로 구독 항목별 소비 흐름을 한눈에 확인해 보세요.'
+          }}
         </p>
       </div>
 
-      <div class="flex gap-2 rounded-full bg-brand-50 p-1">
+      <div class="flex gap-2">
         <button
           type="button"
-          class="chip-button min-h-9 px-4"
-          :class="view === 'MONTHLY' ? 'is-selected' : 'border-transparent bg-transparent'"
+          class="rounded-full px-4 py-2 text-sm font-bold"
+          :class="view === 'MONTHLY' ? 'bg-[#F4E2A1] text-neutral-900' : 'bg-[rgba(46,34,10,0.06)] text-neutral-500'"
           @click="emit('change-view', 'MONTHLY')"
         >
           월별
         </button>
         <button
           type="button"
-          class="chip-button min-h-9 px-4"
-          :class="view === 'YEARLY' ? 'is-selected' : 'border-transparent bg-transparent'"
+          class="rounded-full px-4 py-2 text-sm font-bold"
+          :class="view === 'YEARLY' ? 'bg-[#F4E2A1] text-neutral-900' : 'bg-[rgba(46,34,10,0.06)] text-neutral-500'"
           @click="emit('change-view', 'YEARLY')"
         >
           연간
@@ -182,142 +150,133 @@ const itemMetaText = (item) => {
       </div>
     </div>
 
-    <div class="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <article
-        v-for="card in summaryCards"
-        :key="card.key"
-        class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.82)] px-4 py-4"
-      >
-        <p class="text-xs font-semibold text-neutral-500">{{ card.title }}</p>
-        <p class="mt-2 text-lg font-bold tracking-[-0.02em] text-neutral-900">
-          {{ card.value }}
+    <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4">
+        <p class="text-xs text-neutral-400">
+          {{ view === 'YEARLY' ? '선택 연도 총 지출' : '선택 월 총 지출' }}
         </p>
-        <p class="mt-1 text-xs leading-5 text-neutral-500">
-          {{ card.description }}
+        <p class="mt-2 text-[18px] font-bold text-neutral-900">
+          {{ formatCurrency(totalAmount) }}
+        </p>
+        <p class="mt-2 text-xs text-neutral-400">
+          {{ view === 'YEARLY' ? '선택 연도 기준 합계' : '선택 월 기준 합계' }}
+        </p>
+      </article>
+
+      <article class="rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4">
+        <p class="text-xs text-neutral-400">
+          {{ view === 'YEARLY' ? '최고 지출 카테고리' : '최고 지출 항목' }}
+        </p>
+        <p class="mt-2 text-[18px] font-bold text-neutral-900">
+          {{ topItem ? `${topItem.label} · ${formatCurrency(topItem.totalAmount)}` : '-' }}
+        </p>
+        <p class="mt-2 text-xs text-neutral-400">
+          {{ topItem ? '가장 큰 금액 항목' : '표시할 데이터 없음' }}
+        </p>
+      </article>
+
+      <article class="rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4">
+        <p class="text-xs text-neutral-400">
+          {{ view === 'YEARLY' ? '카테고리 평균 지출' : '항목 평균 지출' }}
+        </p>
+        <p class="mt-2 text-[18px] font-bold text-neutral-900">
+          {{ normalizedItems.length ? formatCurrency(averageAmount) : '-' }}
+        </p>
+        <p class="mt-2 text-xs text-neutral-400">
+          {{ normalizedItems.length ? `${normalizedItems.length}개 항목 평균` : '표시할 데이터 없음' }}
+        </p>
+      </article>
+
+      <article class="rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4">
+        <p class="text-xs text-neutral-400">
+          {{ view === 'YEARLY' ? '전년 대비' : '전월 대비' }}
+        </p>
+        <p class="mt-2 text-[18px] font-bold text-neutral-900">
+          {{ changeRate == null ? '-' : `${changeRate > 0 ? '+' : ''}${changeRate}%` }}
+        </p>
+        <p class="mt-2 text-xs text-neutral-400">
+          {{
+            changeAmount == null
+              ? '비교 데이터 없음'
+              : `${formatCurrency(Math.abs(changeAmount))} ${changeAmount >= 0 ? '증가' : '감소'}`
+          }}
         </p>
       </article>
     </div>
 
-    <div
-      v-if="items.length"
-      class="mt-6 rounded-[24px] border border-[rgba(46,34,10,0.08)] bg-white/50 p-4"
-    >
-      <div class="mb-4 flex items-center justify-between gap-3">
+    <div class="mt-5 rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4">
+      <div class="flex items-start justify-between gap-4">
         <div>
-          <p class="text-sm font-semibold text-[#8A6A00]">
-            {{ view === 'YEARLY' ? '구간별 지출 흐름' : '날짜별 지출 흐름' }}
+          <p class="text-sm font-bold text-[#8A6A00]">
+            {{ view === 'YEARLY' ? '카테고리별 지출' : '구독 항목별 지출' }}
           </p>
-          <p class="mt-1 text-xs text-neutral-500">
-            막대 길이는 가장 큰 금액 구간을 기준으로 상대 비교됩니다.
+          <p class="mt-1 text-xs text-neutral-400">
+            가장 큰 금액 항목을 기준으로 상대 비교됩니다.
           </p>
         </div>
 
-        <p class="text-xs font-semibold text-neutral-500">
-          최고값 {{ formatCurrency(maxAmount) }}
+        <p v-if="topItem" class="text-xs font-bold text-neutral-500">
+          최고값 {{ formatCurrency(topItem.totalAmount) }}
         </p>
       </div>
 
-      <div class="grid gap-4">
-        <div
-          v-for="item in items"
-          :key="item.key || item.label"
-          class="grid gap-2 md:grid-cols-[84px_minmax(0,1fr)_120px] md:items-center"
-        >
-          <div>
-            <p class="text-sm font-bold text-neutral-700">{{ item.label }}</p>
-            <p v-if="itemMetaText(item)" class="mt-0.5 text-[11px] text-neutral-400">
-              {{ itemMetaText(item) }}
-            </p>
+      <div v-if="normalizedItems.length" class="mt-5 grid gap-4">
+        <article v-for="item in normalizedItems" :key="item.key" class="grid gap-2">
+          <div class="flex items-center justify-between gap-3 text-sm font-bold text-neutral-900">
+            <span>{{ item.label }}</span>
+            <span>{{ formatCurrency(item.totalAmount) }}</span>
           </div>
 
           <div class="h-3 rounded-full bg-[rgba(46,34,10,0.08)]">
             <div
-              class="h-3 rounded-full bg-brand-500 transition-all duration-300"
-              :style="{ width: getBarWidth(item.totalAmount, maxAmount) }"
-            />
+              class="h-3 rounded-full bg-[#E6C200]"
+              :style="{ width: barWidth(item.totalAmount) }"
+            ></div>
           </div>
+        </article>
+      </div>
 
-          <p class="text-right text-sm font-bold text-neutral-900">
-            {{ formatCurrency(item.totalAmount) }}
-          </p>
-        </div>
+      <div v-else class="py-12 text-center">
+        <p class="text-base font-bold text-neutral-700">표시할 분석 데이터가 없습니다</p>
+        <p class="mt-2 text-sm text-neutral-400">
+          결제 데이터가 쌓이면 이 영역에 금액 흐름이 표시됩니다.
+        </p>
       </div>
     </div>
 
-    <AppStatePanel
-      v-else
-      class="mt-6"
-      compact
-      title="표시할 분석 데이터가 없습니다"
-      description="결제 데이터가 쌓이면 이 영역에 금액 흐름이 표시됩니다."
-      icon="chart"
-    />
-
-    <div v-if="view === 'MONTHLY'" class="mt-8 border-t border-[rgba(46,34,10,0.08)] pt-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold text-[#8A6A00]">{{ paymentPreviewLabel }} 결제 정보</p>
-          <p class="mt-1 text-sm text-neutral-500">
-            선택한 달에 예정된 결제 항목을 리스트로 다시 확인할 수 있어요.
-          </p>
-        </div>
-      </div>
+    <div class="mt-6 border-t border-[rgba(46,34,10,0.08)] pt-6">
+      <p class="text-sm font-bold text-[#8A6A00]">
+        {{ paymentPreviewLabel }} 결제 정보
+      </p>
+      <p class="mt-1 text-xs text-neutral-400">
+        선택한 달에 포함되는 구독 항목을 리스트로 다시 확인할 수 있어요.
+      </p>
 
       <div v-if="paymentPreview.length" class="mt-4 grid gap-3">
         <article
-          v-for="item in paymentPreview"
-          :key="item.paymentId"
-          class="grid gap-2 rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-[rgba(255,253,247,0.82)] px-4 py-3 md:grid-cols-[88px_minmax(0,1fr)_110px] md:items-center"
+          v-for="(item, index) in paymentPreview"
+          :key="item.paymentId || `${item.subscriptionName}-${index}`"
+          class="flex items-center justify-between gap-4 rounded-[24px] border border-[rgba(46,34,10,0.08)] p-4"
         >
-          <p class="text-sm font-semibold text-neutral-500">{{ item.displayDateLabel }}</p>
-
-          <div class="flex items-center gap-3">
-            <div class="grid h-10 w-10 place-items-center rounded-xl bg-white ring-1 ring-[rgba(46,34,10,0.08)]">
-              <AppAsset
-                type="service"
-                :value="item.subscriptionName"
-                secondary-type="category"
-                :secondary-value="item.categoryName"
-                fallback="calendar"
-                :size="16"
-                wrapper-class="inline-flex items-center justify-center"
-                image-class="h-6 w-6 object-contain"
-                icon-class="text-[#8A6A00]"
-              />
-            </div>
-
-            <div>
-              <p class="text-sm font-bold text-neutral-900">{{ item.subscriptionName }}</p>
-              <div class="mt-1 inline-flex items-center gap-2 text-xs text-neutral-500">
-                <AppAsset
-                  type="card"
-                  :value="item.paymentCardName"
-                  fallback="creditcard"
-                  :size="10"
-                  wrapper-class="inline-flex items-center justify-center"
-                  image-class="h-4 w-4 rounded bg-white p-0.5 ring-1 ring-[rgba(46,34,10,0.08)] object-contain"
-                  icon-class="text-[#8A6A00]"
-                  badge-class="inline-flex min-w-[32px] items-center justify-center rounded-md px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[-0.02em]"
-                />
-                {{ item.categoryDisplayName }} · {{ item.paymentCardName || '등록 카드' }}
-              </div>
-            </div>
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-neutral-400">{{ item.displayDateLabel }}</p>
+            <p class="mt-1 truncate text-base font-bold text-neutral-900">
+              {{ item.subscriptionName }}
+            </p>
+            <p class="mt-1 text-xs text-neutral-500">
+              {{ item.categoryName }} · {{ item.paymentCardName }}
+            </p>
           </div>
 
-          <p class="text-right text-sm font-bold text-neutral-900">
+          <p class="shrink-0 text-lg font-bold text-neutral-900">
             {{ formatCurrency(item.paymentAmount) }}
           </p>
         </article>
       </div>
 
-      <AppStatePanel
-        v-else
-        class="mt-4"
-        compact
-        title="이 달에 예정된 결제가 없습니다"
-        description="구독을 등록하면 선택한 달의 결제 항목이 이 아래 리스트에 함께 표시됩니다."
-        icon="creditcard"
-      />
+      <div v-else class="py-10 text-center text-sm text-neutral-400">
+        이 달에 예정된 결제 정보가 없습니다.
+      </div>
     </div>
   </section>
 </template>

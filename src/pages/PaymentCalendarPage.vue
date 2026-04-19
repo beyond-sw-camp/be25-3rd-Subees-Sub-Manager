@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import PaymentCalendarGrid from '@/components/calendar/PaymentCalendarGrid.vue'
@@ -46,6 +46,90 @@ const categoryDisplayName = (categoryName) =>
     Etc: '기타',
     Others: '기타',
   }[categoryName] || categoryName)
+
+const extractDayNumber = (day) => {
+  if (day?.payDay != null) return Number(day.payDay)
+  if (day?.day != null) return Number(day.day)
+  if (day?.dateNumber != null) return Number(day.dateNumber)
+  if (day?.date) {
+    const parsed = new Date(day.date)
+    if (!Number.isNaN(parsed.getTime())) return parsed.getDate()
+
+    const match = String(day.date).match(/(\d{1,2})$/)
+    if (match) return Number(match[1])
+  }
+  return null
+}
+
+const isCurrentMonthDay = (day) => {
+  if (day?.isCurrentMonth !== undefined) return day.isCurrentMonth
+  if (day?.isCurrent !== undefined) return day.isCurrent
+  if (day?.outside !== undefined) return !day.outside
+  if (day?.isOutside !== undefined) return !day.isOutside
+  return true
+}
+
+const monthlyTrendItems = computed(() => {
+  const source = Array.isArray(calendarDays.value) ? calendarDays.value : []
+
+  return source
+    .filter((day) => isCurrentMonthDay(day) && Number(day.totalAmount || 0) > 0)
+    .map((day, index) => {
+      const dayNumber = extractDayNumber(day)
+      if (!dayNumber) return null
+
+      return {
+        key: `day-${dayNumber}-${index}`,
+        label: `${dayNumber}일`,
+        totalAmount: Number(day.totalAmount || 0),
+        totalCount: Number(day.totalCount || 0),
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(a.label.replace('일', '')) - Number(b.label.replace('일', '')))
+})
+
+const yearlyTrendItems = computed(() => {
+  const source = Array.isArray(activeTrendItems.value) ? activeTrendItems.value : []
+
+  return source
+    .map((item, index) => {
+      const month = Number(item.month ?? item.label?.replace?.('월', '') ?? 0)
+      if (!month) return null
+
+      return {
+        key: `month-${month}-${index}`,
+        label: `${month}월`,
+        totalAmount: Number(item.totalAmount || 0),
+        subscriptionCount:
+          item.subscriptionCount !== undefined && item.subscriptionCount !== null
+            ? Number(item.subscriptionCount)
+            : null,
+        totalCount: Number(item.totalCount || item.count || 0),
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(a.label.replace('월', '')) - Number(b.label.replace('월', '')))
+})
+
+const trendPanelItems = computed(() =>
+  trendView.value === 'MONTHLY' ? monthlyTrendItems.value : yearlyTrendItems.value,
+)
+
+const resolvedTrendMaxAmount = computed(() => {
+  const source = trendPanelItems.value
+  if (!source.length) return 0
+
+  return source.reduce((max, item) => Math.max(max, Number(item.totalAmount || 0)), 0)
+})
+
+  const resolvedTrendTotalAmount = computed(() => {
+  return Number(trendTotalAmount.value || 0)
+})
+
+const resolvedPreviousTrendTotalAmount = computed(() => {
+  return Number(previousTrendTotalAmount.value || 0)
+})
 
 const changePanelTab = async (tab) => {
   activePanelTab.value = tab
@@ -167,9 +251,7 @@ onMounted(async () => {
                 <div
                   class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-4 py-3"
                 >
-                  <p
-                    class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400"
-                  >
+                  <p class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">
                     비중이 큰 카테고리
                   </p>
                   <p class="mt-2 text-sm font-bold text-neutral-900">
@@ -191,9 +273,7 @@ onMounted(async () => {
                 <div
                   class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-4 py-3"
                 >
-                  <p
-                    class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400"
-                  >
+                  <p class="text-xs font-bold uppercase tracking-[0.08em] text-neutral-400">
                     선택한 날짜
                   </p>
                   <p class="mt-2 text-sm font-bold text-neutral-900">
@@ -214,7 +294,6 @@ onMounted(async () => {
             />
           </template>
 
-          <!-- 상단 카테고리 탭 전용 -->
           <section v-else class="shell-card p-5">
             <p class="text-sm font-semibold text-[#8A6A00]">
               {{ currentMonthShortLabel }} 카테고리별 소비
@@ -258,7 +337,6 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- 아래쪽은 기존 분석 API 그대로 -->
       <section class="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
         <section class="section-card !p-5 lg:!p-6">
           <div class="border-b border-[rgba(46,34,10,0.08)] pb-4">
@@ -318,16 +396,18 @@ onMounted(async () => {
           />
         </section>
 
-        <SpendTrendPanel
-          :items="activeTrendItems"
-          :max-amount="maxTrendAmount"
-          :view="trendView"
-          :payment-preview="currentMonthPaymentList"
-          :payment-preview-label="currentMonthShortLabel"
-          :total-amount="trendTotalAmount"
-          :previous-total-amount="previousTrendTotalAmount"
-          @change-view="paymentCalendarStore.setTrendView"
-        />
+        <div class="grid gap-2">
+          <SpendTrendPanel
+            :items="trendPanelItems"
+            :max-amount="resolvedTrendMaxAmount"
+            :view="trendView"
+            :payment-preview="currentMonthPaymentList"
+            :payment-preview-label="currentMonthShortLabel"
+            :total-amount="resolvedTrendTotalAmount"
+            :previous-total-amount="resolvedPreviousTrendTotalAmount"
+            @change-view="paymentCalendarStore.setTrendView"
+          />
+        </div>
       </section>
     </div>
   </AppShell>

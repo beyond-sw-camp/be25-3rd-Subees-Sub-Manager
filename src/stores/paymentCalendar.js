@@ -5,6 +5,7 @@ import {
   getPaymentDateDetails,
   getPaymentAnalytics,
   getCategorySummary,
+  getMonthlyPaymentList,
 } from '@/api/calendar'
 
 const WEEKDAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -49,6 +50,14 @@ const countItemNames = (itemNames = '') =>
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean).length
+
+const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate()
+
+const clampDay = (year, month, day) =>
+  Math.min(Math.max(Number(day || 1), 1), getDaysInMonth(year, month))
+
+const buildSelectedDateKey = (year, month, day) =>
+  formatDateKey(year, month, clampDay(year, month, day))
 
 const buildCalendarMatrix = (year, month, items, selectedDateKey) => {
   const firstDay = new Date(year, month - 1, 1)
@@ -130,47 +139,50 @@ const buildCalendarMatrix = (year, month, items, selectedDateKey) => {
 
 export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
   const now = new Date()
+  const todayYear = now.getFullYear()
+  const todayMonth = now.getMonth() + 1
+  const todayDay = now.getDate()
 
-  const currentYear = ref(now.getFullYear())
-  const currentMonth = ref(now.getMonth() + 1)
+  const currentYear = ref(todayYear)
+  const currentMonth = ref(todayMonth)
   const selectedDateKey = ref(
-    formatDateKey(now.getFullYear(), now.getMonth() + 1, 1),
+    buildSelectedDateKey(todayYear, todayMonth, todayDay),
   )
 
   const calendarSummary = ref({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
+    year: todayYear,
+    month: todayMonth,
     monthTotalAmount: 0,
     items: [],
   })
 
   const previousCalendarSummary = ref({
-    year: now.getFullYear(),
-    month: now.getMonth(),
+    year: todayYear,
+    month: todayMonth - 1,
     monthTotalAmount: 0,
     items: [],
   })
 
-  // 상단 카테고리 카드 전용
   const topCategorySummary = ref([])
 
-  // 하단 왼쪽 카테고리 그래프 전용
   const categoryAnalytics = ref({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
+    year: todayYear,
+    month: todayMonth,
     rangeType: 'MONTH',
     totalAmount: 0,
     categories: [],
   })
 
   const yearlyAnalytics = ref({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
+    year: todayYear,
+    month: todayMonth,
     rangeType: 'YEAR',
     totalAmount: 0,
     categories: [],
   })
 
+  const currentMonthPaymentSource = ref([])
+  const previousMonthPaymentSource = ref([])
   const selectedDateDetailList = ref([])
 
   const isLoading = ref(false)
@@ -193,13 +205,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
   const monthTotalAmount = computed(() =>
     Number(calendarSummary.value?.monthTotalAmount || 0),
-  )
-
-  const topCategoryTotalAmount = computed(() =>
-    topCategorySummary.value.reduce(
-      (sum, item) => sum + Number(item.totalAmount || 0),
-      0,
-    ),
   )
 
   const calendarItems = computed(() => calendarSummary.value?.items || [])
@@ -252,46 +257,52 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     ),
   )
 
-  // 하단 왼쪽 그래프용
   const currentMonthCategorySummary = computed(() => {
-  const categories = categoryAnalytics.value?.categories || []
-  const totalAmount = Number(
-    categoryAnalytics.value?.totalAmount || monthTotalAmount.value || 0,
-  )
+    const categories = categoryAnalytics.value?.categories || []
 
-  return categories.map((item) => {
-    const meta = CATEGORY_META[item.categoryName] || {
-      displayName: item.categoryName,
-      colorClass: 'bg-[#D9D9D9]',
-    }
+    const normalized = categories.map((item) => {
+      const meta = CATEGORY_META[item.categoryName] || {
+        displayName: item.categoryName,
+        colorClass: 'bg-[#D9D9D9]',
+      }
 
-    const itemNames = item.itemNames || ''
-    const ratio =
-      item.ratio != null
-        ? Number(item.ratio)
-        : totalAmount > 0
-          ? Number(
-              (
-                (Number(item.totalAmount || 0) / totalAmount) *
-                100
-              ).toFixed(1),
-            )
-          : 0
+      const itemNames = item.itemNames || ''
 
-    return {
-      categoryName: item.categoryName,
-      displayName: meta.displayName,
-      colorClass: meta.colorClass,
-      totalAmount: Number(item.totalAmount || 0),
-      itemNames,
-      subscriptionCount:
-        item.subscriptionCount != null
-          ? Number(item.subscriptionCount)
-          : countItemNames(itemNames),
-      ratio,
-    }
+      return {
+        categoryName: item.categoryName,
+        displayName: meta.displayName,
+        colorClass: meta.colorClass,
+        totalAmount: Number(item.totalAmount || 0),
+        itemNames,
+        subscriptionCount:
+          item.subscriptionCount != null
+            ? Number(item.subscriptionCount)
+            : countItemNames(itemNames),
+      }
+    })
+
+    const total = normalized.reduce(
+      (sum, item) => sum + Number(item.totalAmount || 0),
+      0,
+    )
+
+    return normalized
+      .map((item) => ({
+        ...item,
+        ratio:
+          total > 0
+            ? Number(((item.totalAmount / total) * 100).toFixed(1))
+            : 0,
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount)
   })
-})
+
+  const topCategoryTotalAmount = computed(() =>
+    currentMonthCategorySummary.value.reduce(
+      (sum, item) => sum + Number(item.totalAmount || 0),
+      0,
+    ),
+  )
 
   const dominantCategory = computed(() => {
     if (!currentMonthCategorySummary.value.length) return null
@@ -303,53 +314,81 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
   const yearlyCategorySummary = computed(() => {
     const categories = yearlyAnalytics.value?.categories || []
-    const totalAmount = Number(yearlyAnalytics.value?.totalAmount || 0)
+    const total = categories.reduce(
+      (sum, item) => sum + Number(item.totalAmount || 0),
+      0,
+    )
 
-    return categories.map((item) => {
-      const meta = CATEGORY_META[item.categoryName] || {
-        displayName: item.categoryName,
-        colorClass: 'bg-[#D9D9D9]',
-      }
+    return categories
+      .map((item) => {
+        const meta = CATEGORY_META[item.categoryName] || {
+          displayName: item.categoryName,
+          colorClass: 'bg-[#D9D9D9]',
+        }
 
-      const ratio =
-        item.ratio != null
-          ? Number(item.ratio)
-          : totalAmount > 0
-            ? Number(
-                (
-                  (Number(item.totalAmount || 0) / totalAmount) *
-                  100
-                ).toFixed(1),
-              )
-            : 0
+        return {
+          categoryName: item.categoryName,
+          displayName: meta.displayName,
+          colorClass: meta.colorClass,
+          totalAmount: Number(item.totalAmount || 0),
+          subscriptionCount: Number(item.subscriptionCount || 0),
+          ratio:
+            total > 0
+              ? Number(
+                  ((Number(item.totalAmount || 0) / total) * 100).toFixed(1),
+                )
+              : 0,
+        }
+      })
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+  })
 
-      return {
-        categoryName: item.categoryName,
-        displayName: meta.displayName,
-        colorClass: meta.colorClass,
-        totalAmount: Number(item.totalAmount || 0),
-        subscriptionCount: Number(item.subscriptionCount || 0),
-        ratio,
-      }
-    })
+  const currentMonthPaymentList = computed(() => {
+    return (currentMonthPaymentSource.value || [])
+      .map((item, index) => ({
+        paymentId: item.paymentId || `subscription-${index}`,
+        subscriptionName: item.subscriptionName || item.itemName || '구독 서비스',
+        categoryName: item.categoryName || '',
+        paymentCardName:
+          item.paymentCardName ||
+          item.paymentMethodName ||
+          item.cardName ||
+          item.cardCompany ||
+          item.customCardCompany ||
+          '등록 카드',
+        paymentAmount: Number(item.paymentAmount || item.price || 0),
+        displayDateLabel: item.displayDateLabel || '매월 구독',
+        isYearly: Boolean(item.isYearly),
+      }))
+      .sort((a, b) => b.paymentAmount - a.paymentAmount)
+  })
+
+  const previousMonthPaymentList = computed(() => {
+    return (previousMonthPaymentSource.value || [])
+      .map((item, index) => ({
+        paymentId: item.paymentId || `prev-subscription-${index}`,
+        subscriptionName: item.subscriptionName || item.itemName || '구독 서비스',
+        paymentAmount: Number(item.paymentAmount || item.price || 0),
+      }))
+      .sort((a, b) => b.paymentAmount - a.paymentAmount)
   })
 
   const activeTrendItems = computed(() => {
     if (trendView.value === 'YEARLY') {
-      return yearlyCategorySummary.value.map((item) => ({
+      return (yearlyAnalytics.value?.categories || []).map((item) => ({
         key: item.categoryName,
-        label: item.displayName,
+        label: item.categoryName,
         totalAmount: Number(item.totalAmount || 0),
         subscriptionCount: Number(item.subscriptionCount || 0),
       }))
     }
 
-    return (calendarItems.value || []).map((item) => ({
-      key: `day-${item.payDay}`,
-      label: `${item.payDay}일`,
-      totalAmount: Number(item.totalAmount || 0),
-      totalCount: Number(item.totalCount || 0),
-      itemNames: item.itemNames || '',
+    return currentMonthPaymentList.value.map((item) => ({
+      key: item.paymentId,
+      label: item.subscriptionName,
+      totalAmount: Number(item.paymentAmount || 0),
+      categoryName: item.categoryName || '',
+      paymentCardName: item.paymentCardName || '',
     }))
   })
 
@@ -365,39 +404,19 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
       return Number(yearlyAnalytics.value?.totalAmount || 0)
     }
 
-    return Number(calendarSummary.value?.monthTotalAmount || 0)
+    return currentMonthPaymentList.value.reduce(
+      (sum, item) => sum + Number(item.paymentAmount || 0),
+      0,
+    )
   })
 
   const previousTrendTotalAmount = computed(() => {
-    if (trendView.value === 'YEARLY') {
-      return null
-    }
+    if (trendView.value === 'YEARLY') return null
 
-    return Number(previousCalendarSummary.value?.monthTotalAmount || 0)
-  })
-
-  const currentMonthPaymentList = computed(() => {
-    if (selectedDatePayments.value.length) {
-      return selectedDatePayments.value.map((item, index) => ({
-        paymentId: item.id || `selected-${index}`,
-        displayDateLabel: selectedDateLabel.value,
-        subscriptionName: item.name || '구독 서비스',
-        categoryName: '',
-        categoryDisplayName: '구독',
-        paymentCardName: item.cardCompany || '',
-        paymentAmount: Number(item.amount || 0),
-      }))
-    }
-
-    return (calendarItems.value || []).map((item, index) => ({
-      paymentId: `summary-${currentYear.value}-${currentMonth.value}-${index}`,
-      displayDateLabel: `${item.payDay}일`,
-      subscriptionName: item.itemNames || '구독 서비스',
-      categoryName: '',
-      categoryDisplayName: '구독',
-      paymentCardName: '',
-      paymentAmount: Number(item.totalAmount || 0),
-    }))
+    return previousMonthPaymentList.value.reduce(
+      (sum, item) => sum + Number(item.paymentAmount || 0),
+      0,
+    )
   })
 
   const setTrendView = async (view) => {
@@ -444,7 +463,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     }
   }
 
-  // 상단 카테고리 카드 전용
   const fetchTopCategorySummary = async () => {
     const response = await getCategorySummary({
       year: currentYear.value,
@@ -453,49 +471,72 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
     const normalized = normalizeArrayPayload(response)
 
-    topCategorySummary.value = (normalized || []).map((item) => ({
-      categoryName: item.categoryName || '',
-      itemNames: item.itemNames || '',
-      totalAmount: Number(item.totalAmount || 0),
-    }))
+    topCategorySummary.value = (normalized || [])
+      .map((item) => ({
+        categoryName: item.categoryName || '',
+        itemNames: item.itemNames || '',
+        totalAmount: Number(item.totalAmount || 0),
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount)
   }
 
-  // 하단 그래프 전용
   const fetchAnalytics = async () => {
-  const response = await getPaymentAnalytics({
-    year: currentYear.value,
-    month: currentMonth.value,
-    rangeType: 'MONTH',
-  })
+    const response = await getPaymentAnalytics({
+      year: currentYear.value,
+      month: currentMonth.value,
+      rangeType: 'MONTH',
+    })
 
-  const normalized = normalizeSinglePayload(response)
+    const normalized = normalizeSinglePayload(response)
 
-  categoryAnalytics.value = {
-    year: normalized?.year ?? currentYear.value,
-    month: normalized?.month ?? currentMonth.value,
-    rangeType: normalized?.rangeType ?? 'MONTH',
-    totalAmount: Number(normalized?.totalAmount || 0),
-    categories: normalized?.categories ?? [],
+    categoryAnalytics.value = {
+      year: normalized?.year ?? currentYear.value,
+      month: normalized?.month ?? currentMonth.value,
+      rangeType: normalized?.rangeType ?? 'MONTH',
+      totalAmount: Number(normalized?.totalAmount || 0),
+      categories: normalized?.categories ?? [],
+    }
   }
-}
 
-const fetchYearlyAnalytics = async () => {
-  const response = await getPaymentAnalytics({
-    year: currentYear.value,
-    month: currentMonth.value,
-    rangeType: 'YEAR',
-  })
+  const fetchYearlyAnalytics = async () => {
+    const response = await getPaymentAnalytics({
+      year: currentYear.value,
+      month: currentMonth.value,
+      rangeType: 'YEAR',
+    })
 
-  const normalized = normalizeSinglePayload(response)
+    const normalized = normalizeSinglePayload(response)
 
-  yearlyAnalytics.value = {
-    year: normalized?.year ?? currentYear.value,
-    month: normalized?.month ?? currentMonth.value,
-    rangeType: normalized?.rangeType ?? 'YEAR',
-    totalAmount: Number(normalized?.totalAmount || 0),
-    categories: normalized?.categories ?? [],
+    yearlyAnalytics.value = {
+      year: normalized?.year ?? currentYear.value,
+      month: normalized?.month ?? currentMonth.value,
+      rangeType: normalized?.rangeType ?? 'YEAR',
+      totalAmount: Number(normalized?.totalAmount || 0),
+      categories: normalized?.categories ?? [],
+    }
   }
-}
+
+  const fetchCurrentMonthPaymentList = async () => {
+    const response = await getMonthlyPaymentList({
+      year: currentYear.value,
+      month: currentMonth.value,
+    })
+
+    const normalized = normalizeArrayPayload(response)
+    currentMonthPaymentSource.value = normalized || []
+  }
+
+  const fetchPreviousMonthPaymentList = async () => {
+    const previousDate = new Date(currentYear.value, currentMonth.value - 2, 1)
+
+    const response = await getMonthlyPaymentList({
+      year: previousDate.getFullYear(),
+      month: previousDate.getMonth() + 1,
+    })
+
+    const normalized = normalizeArrayPayload(response)
+    previousMonthPaymentSource.value = normalized || []
+  }
 
   const fetchSelectedDateDetails = async () => {
     if (!selectedDateKey.value) {
@@ -525,6 +566,8 @@ const fetchYearlyAnalytics = async () => {
         fetchPreviousCalendar(),
         fetchAnalytics(),
         fetchYearlyAnalytics(),
+        fetchCurrentMonthPaymentList(),
+        fetchPreviousMonthPaymentList(),
       ])
 
       await fetchSelectedDateDetails()
@@ -564,6 +607,8 @@ const fetchYearlyAnalytics = async () => {
 
       selectedDateDetailList.value = []
       topCategorySummary.value = []
+      currentMonthPaymentSource.value = []
+      previousMonthPaymentSource.value = []
     } finally {
       isLoading.value = false
     }
@@ -590,6 +635,9 @@ const fetchYearlyAnalytics = async () => {
   }
 
   const moveMonth = async (offset) => {
+    const [, , selectedDayText] = selectedDateKey.value.split('-')
+    const preferredDay = Number(selectedDayText || todayDay)
+
     const next = new Date(
       currentYear.value,
       currentMonth.value - 1 + offset,
@@ -598,10 +646,10 @@ const fetchYearlyAnalytics = async () => {
 
     currentYear.value = next.getFullYear()
     currentMonth.value = next.getMonth() + 1
-    selectedDateKey.value = formatDateKey(
+    selectedDateKey.value = buildSelectedDateKey(
       currentYear.value,
       currentMonth.value,
-      1,
+      preferredDay,
     )
 
     topCategorySummary.value = []
@@ -624,6 +672,7 @@ const fetchYearlyAnalytics = async () => {
     topCategorySummary,
     dominantCategory,
     currentMonthCategorySummary,
+    yearlyCategorySummary,
     calendarDays,
     selectedDatePayments,
     selectedDateAmount,

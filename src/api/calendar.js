@@ -15,3 +15,7 @@ export const getCategorySummary = (params = {}) =>
 // 소비 분석 조회(카테고리)
 export const getPaymentAnalytics = (params = {}) =>
     http.get('/api/v1/consumption/analysis/categories', { params })
+
+// 월 결제 정보 조회
+export const getMonthlyPaymentList = (params = {}) =>
+    http.get('/api/v1/consumption/analysis/month', { params })
