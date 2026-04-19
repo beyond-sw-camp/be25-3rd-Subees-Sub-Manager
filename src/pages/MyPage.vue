@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
+import AppConfirmDialog from '@/components/ui/AppConfirmDialog.vue'
 import { useMyPageStore } from '@/stores/myPage'
 import { getCheckNickname } from '@/api/auth'
 
@@ -37,6 +38,15 @@ const passwordForm = reactive({
   newPassword: '',
   newPasswordConfirm: '',
 })
+
+const passwordErrors = reactive({
+  currentPassword: '',
+  newPassword: '',
+  newPasswordConfirm: '',
+  general: '',
+})
+
+const showWithdrawDialog = ref(false)
 
 const profileInitial = computed(() => {
   const nickname = profile.value?.nickname || 'S'
@@ -75,6 +85,62 @@ watch(() => profileForm.nickname, (value) => {
   if (nicknameCheck.value.checkedValue !== value.trim()) {
     nicknameCheck.value = { loading: false, available: null, message: '', checkedValue: '' }
   }
+})
+
+const clearPasswordErrors = () => {
+  passwordErrors.currentPassword = ''
+  passwordErrors.newPassword = ''
+  passwordErrors.newPasswordConfirm = ''
+  passwordErrors.general = ''
+}
+
+const mapPasswordErrorMessage = (message) => {
+  const mapped = {
+    currentPassword: '',
+    newPassword: '',
+    newPasswordConfirm: '',
+    general: '',
+  }
+
+  if (!message) return mapped
+
+  const fieldMatches = [...String(message).matchAll(/([a-zA-Z]+)\(([^()]+)\)/g)]
+  if (fieldMatches.length) {
+    fieldMatches.forEach(([, field, fieldMessage]) => {
+      if (field === 'currentPassword') mapped.currentPassword = fieldMessage
+      if (field === 'newPassword') mapped.newPassword = fieldMessage
+      if (field === 'newPasswordConfirm') mapped.newPasswordConfirm = fieldMessage
+    })
+    return mapped
+  }
+
+  if (String(message).includes('현재 비밀번호')) {
+    mapped.currentPassword = message
+    return mapped
+  }
+
+  if (String(message).includes('새 비밀번호')) {
+    mapped.newPassword = message
+    return mapped
+  }
+
+  mapped.general = message
+  return mapped
+}
+
+watch(() => passwordForm.currentPassword, () => {
+  passwordErrors.currentPassword = ''
+  passwordErrors.general = ''
+})
+
+watch(() => passwordForm.newPassword, () => {
+  passwordErrors.newPassword = ''
+  passwordErrors.general = ''
+})
+
+watch(() => passwordForm.newPasswordConfirm, () => {
+  passwordErrors.newPasswordConfirm = ''
+  passwordErrors.general = ''
 })
 
 onMounted(async () => {
@@ -147,8 +213,26 @@ const handleProfileSubmit = async () => {
 }
 
 const handlePasswordSubmit = async () => {
-  if (passwordForm.newPassword !== passwordForm.newPasswordConfirm) {
-    myPageStore.setError('새 비밀번호와 확인 값이 일치하지 않습니다.')
+  myPageStore.clearStatus()
+  clearPasswordErrors()
+
+  if (!passwordForm.currentPassword) {
+    passwordErrors.currentPassword = '현재 비밀번호를 입력해주세요.'
+  }
+
+  if (!passwordForm.newPassword) {
+    passwordErrors.newPassword = '새 비밀번호를 입력해주세요.'
+  } else if (passwordForm.newPassword.length < 8 || passwordForm.newPassword.length > 20) {
+    passwordErrors.newPassword = '새 비밀번호는 8자 이상 20자 이하로 입력해주세요.'
+  }
+
+  if (!passwordForm.newPasswordConfirm) {
+    passwordErrors.newPasswordConfirm = '새 비밀번호를 한 번 더 입력해주세요.'
+  } else if (passwordForm.newPassword !== passwordForm.newPasswordConfirm) {
+    passwordErrors.newPasswordConfirm = '새 비밀번호가 서로 일치하지 않습니다.'
+  }
+
+  if (passwordErrors.currentPassword || passwordErrors.newPassword || passwordErrors.newPasswordConfirm) {
     return
   }
 
@@ -158,20 +242,39 @@ const handlePasswordSubmit = async () => {
   })
 
   if (success) {
+    clearPasswordErrors()
     passwordForm.currentPassword = ''
     passwordForm.newPassword = ''
     passwordForm.newPasswordConfirm = ''
+    return
+  }
+
+  const mappedErrors = mapPasswordErrorMessage(errorMessage.value)
+  passwordErrors.currentPassword = mappedErrors.currentPassword
+  passwordErrors.newPassword = mappedErrors.newPassword
+  passwordErrors.newPasswordConfirm = mappedErrors.newPasswordConfirm
+  passwordErrors.general = mappedErrors.general
+
+  if (passwordErrors.currentPassword || passwordErrors.newPassword || passwordErrors.newPasswordConfirm || passwordErrors.general) {
+    myPageStore.clearStatus()
   }
 }
 
-const handleWithdraw = async () => {
-  const confirmed = window.confirm('정말로 회원탈퇴를 진행하시겠습니까? 탈퇴 후에는 복구할 수 없습니다.')
-  if (!confirmed) return
+const openWithdrawDialog = () => {
+  showWithdrawDialog.value = true
+}
 
+const closeWithdrawDialog = () => {
+  if (isWithdrawing.value) return
+  showWithdrawDialog.value = false
+}
+
+const handleWithdraw = async () => {
   const success = await myPageStore.withdraw()
-  if (success) {
-    router.push('/login')
-  }
+  if (!success) return
+
+  showWithdrawDialog.value = false
+  router.push('/login')
 }
 </script>
 
@@ -198,7 +301,7 @@ const handleWithdraw = async () => {
               type="button"
               class="inline-flex min-h-12 items-center justify-center rounded-[14px] bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-700"
               :disabled="isWithdrawing"
-              @click="handleWithdraw"
+              @click="openWithdrawDialog"
             >
               {{ isWithdrawing ? '처리 중...' : '회원탈퇴' }}
             </button>
@@ -365,15 +468,19 @@ const handleWithdraw = async () => {
                   <label class="grid gap-2">
                     <span class="form-label">현재 비밀번호</span>
                     <input v-model="passwordForm.currentPassword" type="password" class="form-input bg-white" placeholder="현재 비밀번호" :disabled="!isLoggedIn" />
+                    <p v-if="passwordErrors.currentPassword" class="text-xs font-medium text-rose-500">{{ passwordErrors.currentPassword }}</p>
                   </label>
                   <label class="grid gap-2">
                     <span class="form-label">새 비밀번호</span>
                     <input v-model="passwordForm.newPassword" type="password" class="form-input bg-white" placeholder="8자 이상 20자 이하" :disabled="!isLoggedIn" />
+                    <p v-if="passwordErrors.newPassword" class="text-xs font-medium text-rose-500">{{ passwordErrors.newPassword }}</p>
                   </label>
                   <label class="grid gap-2">
                     <span class="form-label">비밀번호 재확인</span>
                     <input v-model="passwordForm.newPasswordConfirm" type="password" class="form-input bg-white" placeholder="새 비밀번호를 다시 입력해주세요." :disabled="!isLoggedIn" />
+                    <p v-if="passwordErrors.newPasswordConfirm" class="text-xs font-medium text-rose-500">{{ passwordErrors.newPasswordConfirm }}</p>
                   </label>
+                  <p v-if="passwordErrors.general" class="text-xs font-medium text-rose-500">{{ passwordErrors.general }}</p>
                 </div>
 
                 <div class="mt-6 flex justify-end">
@@ -387,5 +494,16 @@ const handleWithdraw = async () => {
         </div>
       </section>
     </div>
+    <AppConfirmDialog
+      :open="showWithdrawDialog"
+      title="회원탈퇴"
+      description="정말로 회원탈퇴를 진행하시겠습니까? 탈퇴 후에는 계정을 복구할 수 없습니다."
+      confirm-text="회원탈퇴"
+      cancel-text="취소"
+      tone="danger"
+      :loading="isWithdrawing"
+      @cancel="closeWithdrawDialog"
+      @confirm="handleWithdraw"
+    />
   </AppShell>
 </template>

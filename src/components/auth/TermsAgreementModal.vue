@@ -6,7 +6,7 @@ const props = defineProps({
   type: { type: String, default: 'terms' },
 })
 
-const emit = defineEmits(['close', 'accept'])
+const emit = defineEmits(['close', 'accept', 'agree'])
 
 const scroller = ref(null)
 const reachedBottom = ref(false)
@@ -49,6 +49,7 @@ const close = () => emit('close')
 const accept = () => {
   if (!reachedBottom.value) return
   emit('accept', props.type)
+  emit('agree', props.type)
 }
 
 watch(
@@ -78,19 +79,26 @@ watch(
         </header>
 
         <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5" @scroll="handleScroll">
-          <div class="grid gap-4">
-            <article v-for="section in modalCopy.sections" :key="section[0]" class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-4">
-              <h3 class="text-sm font-bold text-neutral-900">{{ section[0] }}</h3>
-              <p class="mt-2 text-sm leading-7 text-neutral-600">{{ section[1] }}</p>
-            </article>
-          </div>
+          <article class="rounded-[22px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-5 py-5">
+            <div class="space-y-5">
+              <section
+                v-for="(section, index) in modalCopy.sections"
+                :key="section[0]"
+                class="pb-5"
+                :class="index !== modalCopy.sections.length - 1 ? 'border-b border-[rgba(46,34,10,0.08)]' : 'pb-0'"
+              >
+                <h3 class="text-sm font-bold text-neutral-900">{{ section[0] }}</h3>
+                <p class="mt-2 text-sm leading-7 text-neutral-600">{{ section[1] }}</p>
+              </section>
+            </div>
+          </article>
         </div>
 
         <footer class="flex flex-col gap-3 border-t border-[rgba(46,34,10,0.08)] px-6 py-5">
           <p class="text-xs text-neutral-500">내용을 끝까지 확인하면 동의 버튼이 활성화됩니다.</p>
           <div class="flex items-center justify-end gap-2.5">
             <button type="button" class="secondary-button !min-h-11 !px-4" @click="close">취소</button>
-            <button type="button" class="primary-button !min-h-11 !px-4" :class="!reachedBottom ? 'cursor-not-allowed opacity-50' : ''" :disabled="!reachedBottom" @click="accept">동의하고 닫기</button>
+            <button type="button" class="primary-button !min-h-11 !px-4" :class="!reachedBottom ? 'cursor-not-allowed opacity-50' : ''" :disabled="!reachedBottom" @click="accept">동의하기</button>
           </div>
         </footer>
       </section>
