@@ -121,59 +121,50 @@ const heroHighlights = computed(() => {
 })
 
 const featureCards = [
-  { title: '구독 등록', desc: '서비스명과 결제 정보를 빠르게 등록할 수 있습니다.', fallback: 'plus' },
-  { title: '결제일 알림', desc: '다가올 구독 결제 일정과 금액을 미리 확인할 수 있습니다.', fallback: 'bell' },
-  { title: '캘린더', desc: '월간 결제 흐름과 날짜별 소비를 한 화면에서 볼 수 있습니다.', fallback: 'calendar' },
-  { title: '지출 분석', desc: '구독 현황과 카테고리별 지출 패턴을 빠르게 분석할 수 있습니다.', fallback: 'chart' },
-  { title: '카테고리 분석', desc: 'OTT·음악·AI 등 카테고리별 분류를 한눈에 확인할 수 있습니다.', fallback: 'chart' },
-  { title: '절약 제안', desc: '중복 결제와 사용 빈도를 바탕으로 절감 포인트를 확인할 수 있습니다.', fallback: 'sparkles' },
+  { title: '구독 등록', desc: '서비스명, 결제주기, 금액을 빠르게 입력해 바로 등록할 수 있습니다.', fallback: 'plus' },
+  { title: '결제일 알림', desc: '다가오는 결제 예정일을 모아서 빠르게 확인할 수 있습니다.', fallback: 'bell' },
+  { title: '캘린더', desc: '날짜별 결제 일정과 월간 흐름을 한 화면에서 확인할 수 있습니다.', fallback: 'calendar' },
+  { title: '지출 분석', desc: '카테고리별 소비 금액과 구독 분포를 한눈에 볼 수 있습니다.', fallback: 'chart' },
+  { title: '카테고리 분석', desc: '어떤 카테고리에 지출이 몰려 있는지 비중과 흐름을 기준으로 바로 확인할 수 있습니다.', fallback: 'chart' },
+  { title: '절약 제안', desc: '중복 결제나 사용 빈도가 낮은 구독을 바탕으로 절약 포인트를 빠르게 확인할 수 있습니다.', fallback: 'sparkles' },
 ]
 
 const categories = [
   {
     key: 'ott',
     label: 'OTT',
-    headline: '자주 쓰는 영상 구독을 정리해보세요',
-    description: '넷플릭스, 티빙, 디즈니+, 웨이브처럼 자주 보는 OTT를 한곳에서 빠르게 확인할 수 있습니다.',
+    headline: '실제 제공 중인 OTT 서비스를 바로 확인할 수 있어요',
+    description: '구독 등록 화면에서 선택 가능한 OTT 항목만 기준으로 맞췄습니다. 영상 구독 서비스를 한 카드에서 빠르게 확인할 수 있습니다.',
     accent: 'rgba(186,107,82,0.14)',
-    services: ['넷플릭스', '티빙', '디즈니+', '웨이브'],
-    layout: 'xl:col-span-4',
+    services: ['Netflix', 'Tving', 'Disney+', 'CoupangPlay', 'Watcha', 'Laftel', 'Wave', 'AppleTv'],
+    layout: 'xl:col-span-6',
   },
   {
     key: 'music',
-    label: '음악',
-    headline: '음악 서비스도 한눈에 관리해보세요',
-    description: '멜론, Spotify, 지니, 애플뮤직처럼 자주 쓰는 음악 구독을 같은 방식으로 확인할 수 있습니다.',
+    label: 'Music',
+    headline: '실제 제공 중인 음악 구독 항목을 한 번에 확인할 수 있어요',
+    description: '구독 추가 단계에서 바로 선택 가능한 음악 서비스만 반영했습니다. 자주 쓰는 음원 서비스를 한곳에 정리할 수 있습니다.',
     accent: 'rgba(93,130,96,0.14)',
-    services: ['멜론', 'Spotify', '지니', '애플뮤직'],
-    layout: 'xl:col-span-4',
+    services: ['Melon', 'AppleMusic', 'Spotify', 'YoutubeMusic', 'Flo', 'Genie', 'Vibe'],
+    layout: 'xl:col-span-6',
   },
   {
     key: 'ai',
     label: 'AI',
-    headline: '업무용 AI 구독 관리도 효율적으로',
-    description: 'ChatGPT, Gemini, Claude처럼 업무에 쓰는 AI 구독도 카테고리별로 바로 묶어볼 수 있습니다.',
+    headline: '실제 제공 중인 AI 구독 서비스만 따로 모았습니다',
+    description: 'AI 추천과 함께 사용하는 핵심 AI 서비스 기준으로 구성했습니다. 현재 등록 가능한 항목과 동일한 목록으로 보여줍니다.',
     accent: 'rgba(138,106,0,0.14)',
-    services: ['ChatGPT', 'Gemini', 'Claude'],
+    services: ['ChatGpt', 'Gemini', 'Claude'],
     layout: 'xl:col-span-4',
   },
   {
-    key: 'cloud',
-    label: '클라우드',
-    headline: '보관형 서비스도 결제 흐름으로 관리',
-    description: 'iCloud+, 카카오 톡서랍처럼 클라우드·보관형 서비스도 같은 방식으로 확인할 수 있습니다.',
-    accent: 'rgba(199,184,149,0.22)',
-    services: ['iCloud+', '카카오 톡서랍'],
-    layout: 'xl:col-span-6',
-  },
-  {
     key: 'other',
-    label: 'OTHER',
-    headline: '생활형 멤버십도 빠짐없이 추가해보세요',
-    description: '네이버멤버십, 쿠팡와우, 카카오 이모티콘+처럼 생활형 구독도 함께 정리할 수 있습니다.',
+    label: 'Others',
+    headline: '기타 카테고리도 실제 제공 서비스 기준으로 모두 반영했습니다',
+    description: '생활형 멤버십, 생산성 도구, 클라우드 서비스를 따로 분리하지 않고 실제 Others 카테고리 항목 전체를 그대로 보여줍니다.',
     accent: 'rgba(153,140,113,0.16)',
-    services: ['네이버멤버십', '쿠팡와우', '카카오 이모티콘+'],
-    layout: 'xl:col-span-6',
+    services: ['배민클럽', '카카오톡서랍', '유튜브프리미엄', '쿠팡와우', '이모티콘플러스', '인텔리제이', 'Icloud+', '컬리', '네이버멤버십', 'GoogleDrive', 'Microsoft 365 Personal', 'Notion', 'Adobe'],
+    layout: 'xl:col-span-8',
   },
 ]
 
@@ -436,7 +427,7 @@ onBeforeUnmount(() => {
               <div>
                 <p class="eyebrow-label">카테고리</p>
                 <h2 class="mt-2 text-[28px] font-bold tracking-[-0.04em] text-neutral-900">구독 관리에 필요한 카테고리를 한눈에 확인해보세요</h2>
-                <p class="mt-2 max-w-[780px] body-copy">카테고리 이미지와 실제 서비스 로고를 함께 배치해 원하는 구독을 빠르게 찾을 수 있게 구성했습니다.</p>
+                <p class="mt-2 max-w-[780px] body-copy">현재 실제로 제공 중인 카테고리와 서비스 항목 기준으로 맞춰두었고, 각 서비스 로고가 모두 보이도록 구성했습니다.</p>
               </div>
               <span class="chip-button is-selected !min-h-[34px]">대표 카테고리</span>
             </div>
@@ -490,7 +481,7 @@ onBeforeUnmount(() => {
                             icon-class="text-[#8A6A00]"
                           />
                         </span>
-                        <span>{{ service === '직접입력' ? '직접 입력' : service }}</span>
+                        <span>{{ service }}</span>
                       </span>
                     </div>
                   </div>
