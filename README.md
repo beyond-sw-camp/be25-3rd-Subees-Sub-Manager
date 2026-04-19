@@ -409,6 +409,10 @@ VITE_API_BASE_URL=http://localhost:8080
 <details>
 <summary><b>💻테스트 결과 보고서</b></summary>
 <br>
+  
+- [테스트 결과 보고서 바로가기](https://docs.google.com/spreadsheets/d/1t28YAF3teou6grdUzRbnRs2NyKi5boFY/edit?gid=2119507144#gid=2119507144)
+<br>
+<img src="https://github.com/beyond-sw-camp/be25-3rd-Subees-Sub-Manager/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80/%EC%9E%91%EC%97%85%EC%9D%B4%EB%AF%B8%EC%A7%80/%ED%85%8C%EC%8A%A4%ED%8A%B8%EA%B2%B0%EA%B3%BC%EB%B3%B4%EA%B3%A0%EC%84%9C.png" alt="ERD" width="640" />
 
 <div align="center">
 
