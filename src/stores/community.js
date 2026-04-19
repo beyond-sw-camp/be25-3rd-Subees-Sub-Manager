@@ -4,6 +4,7 @@ import { useAuthStore } from './auth'
 //api 함수를 import해서 사용
 import { getCommunityPosts, getCommunityPostDetail, createCommunityPost, updateCommunityPost, deleteCommunityPost, toggleCommunityScrap, cancelCommunityScrap, getScrappedCommunityPosts } from '@/api/community'
 
+
 const getScrapStorageKey = (userId) => `subees-community-scraps-${userId ?? 'guest'}`
 
 const loadJson = (key, fallback) => {
@@ -208,9 +209,19 @@ export const useCommunityStore = defineStore('community', () => {
   }
 
   // 유저가 바뀌면(로그인/로그아웃/계정 전환) 해당 유저의 스크랩 목록으로 교체
-  watch(() => authStore.userId, (newUserId) => {
-    scrappedPostIds.value = loadJson(getScrapStorageKey(newUserId), [])
-  })
+  watch(
+    () => authStore.userId,
+    async (newUserId) => {
+      scrappedPostIds.value = loadJson(getScrapStorageKey(newUserId), [])
+      clearMessages()
+
+      if (currentPost.value?.postId) {
+        await fetchPostDetail(currentPost.value.postId)
+      }
+    },
+  )
+
+
 
   watch(
     scrappedPostIds,
@@ -280,20 +291,22 @@ export const useCommunityStore = defineStore('community', () => {
   const popularPost = computed(() => [...enrichedPosts.value].sort((a, b) => b.viewCount - a.viewCount)[0] ?? null)
   const recentPost = computed(() => [...enrichedPosts.value].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] ?? null)
 
-  const clearMessages = () => {
-    successMessage.value = ''
-    errorMessage.value = ''
-  }
+    const clearMessages = () => {
+      successMessage.value = ''
+      errorMessage.value = ''
+    }
 
-  const setSuccess = (message) => {
-    successMessage.value = message
-    errorMessage.value = ''
-  }
+    const setSuccess = (message) => {
+      successMessage.value = message
+      errorMessage.value = ''
+    }
 
-  const setError = (message) => {
-    errorMessage.value = message
-    successMessage.value = ''
-  }
+    const setError = (message) => {
+      errorMessage.value = message
+      successMessage.value = ''
+    }
+
+
 
   const setQuery = (value) => {
     filters.query = value
