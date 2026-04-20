@@ -379,27 +379,13 @@ VITE_API_BASE_URL=http://localhost:8080
 <summary><b>🖼️ 화면 및 기능 설계서</b></summary>
 <br>
 
-### 주요 화면
-1. **홈 화면**: 서비스 소개, 핵심 기능 프리뷰
-2. **대시보드**: 월별 지출 요약, 카테고리 분석, 예정 결제 내역
-3. **구독 목록 / 구독 추가**: 등록된 구독 조회 및 신규 구독 입력
-4. **결제 캘린더**: 날짜별 결제 일정과 상세 내역 확인
-5. **알림 센터**: 결제일 기준 알림 확인
-6. **커뮤니티**: 게시글 작성, 조회, 수정, 삭제, 스크랩
-7. **AI 추천**: 추천 생성, 결과 확인, 저장, 기록/상세 조회
-8. **마이페이지 / 결제 카드**: 회원 정보 및 카드 관리
 
-<p align="center">
-  <b>화면 미리보기 이미지는 추후 업로드 예정입니다.</b><br/>
-  이미지 파일을 업로드한 뒤 이 영역에 스크린샷을 연결하면 됩니다.
-</p>
+-[화면설계서 바로가기](https://www.figma.com/design/8EOuGl8Jxtz5RJapDro4ky/Subees-%ED%99%94%EB%A9%B4-%EB%B0%8F-%EA%B8%B0%EB%8A%A5%EC%84%A4%EA%B3%84%EC%84%9C-%EC%8A%A4%EC%BC%88%EB%A0%88%ED%86%A4-?node-id=0-1&p=f&t=Z91AyGun2TdQtAu6-0)
 
-<!--
-예시:
 <div align="center">
-  <img src="./이미지/작업이미지/화면설계_미리보기.png" alt="화면 설계서" width="640" />
+  <img src="https://github.com/beyond-sw-camp/be25-3rd-Subees-Sub-Manager/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80/%EC%9E%91%EC%97%85%EC%9D%B4%EB%AF%B8%EC%A7%80/figma%20%EC%82%AC%EC%A7%84.png?raw=true" alt="화면 설계서" width="640" />
 </div>
--->
+
 
 </details>
 
