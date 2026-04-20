@@ -11,6 +11,20 @@ const router = useRouter()
 const myPageStore = useMyPageStore()
 const fileInput = ref(null)
 
+const saveNotificationPreference = async () => {
+  await myPageStore.savePreferenceSettings()
+
+  const hasAnyNotificationEnabled =
+    preferences.value.messageNotificationEnabled ||
+    preferences.value.paymentReminderEnabled
+
+  localStorage.setItem('notificationAllEnabled', String(hasAnyNotificationEnabled))
+  localStorage.setItem('notificationD3Enabled', String(preferences.value.messageNotificationEnabled))
+  localStorage.setItem('notificationD0Enabled', String(preferences.value.paymentReminderEnabled))
+}
+
+
+
 const {
   profile,
   profileImageUrl,
@@ -451,7 +465,7 @@ const handleWithdraw = async () => {
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                  <button type="button" class="primary-button" @click="myPageStore.savePreferenceSettings">알림 설정 저장</button>
+                <button type="button" class="primary-button" @click="saveNotificationPreference">알림 설정 저장</button>
                 </div>
               </div>
             </article>

@@ -11,6 +11,32 @@ const route = useRoute()
 const notificationsStore = useNotificationsStore()
 const { unreadOnly, unreadCount, visibleNotifications, isLoading, errorMessage } = storeToRefs(notificationsStore)
 
+const notificationAllEnabled = computed(() => {
+  return localStorage.getItem('notificationAllEnabled') !== 'false'
+})
+
+const notificationD3Enabled = computed(() => {
+  return localStorage.getItem('notificationD3Enabled') !== 'false'
+})
+
+const notificationD0Enabled = computed(() => {
+  return localStorage.getItem('notificationD0Enabled') !== 'false'
+})
+
+const filteredNotifications = computed(() => {
+  if (!notificationAllEnabled.value) return []
+
+  return visibleNotifications.value.filter((item) => {
+    if (item.dday === 'D-3') return notificationD3Enabled.value
+    if (item.dday === 'D-DAY') return notificationD0Enabled.value
+    return true
+  })
+})
+
+const displayUnreadCount = computed(() => {
+  return filteredNotifications.value.filter((item) => !item.read).length
+})
+
 const activeNotificationId = computed(() => {
   const raw = Number(route.query.notificationId)
   return Number.isFinite(raw) ? raw : null
@@ -64,6 +90,8 @@ watch(activeNotificationId, () => {
 
 onMounted(async () => {
   try {
+    if (!notificationAllEnabled.value) return
+
     await notificationsStore.ensureFetched()
     await scrollToActiveNotification()
   } catch (error) {
@@ -89,13 +117,25 @@ onMounted(async () => {
         </div>
       </section>
 
+      
+
       <AppStatePanel
+      
         v-if="isLoading && !visibleNotifications.length"
         title="알림을 불러오는 중입니다"
         description="서버에서 결제 예정 알림 목록을 가져오고 있습니다."
         icon="bell"
         tone="info"
       />
+
+      <AppStatePanel
+        v-else-if="!notificationAllEnabled"
+        title="알림이 비활성화되어 있습니다"
+        description="마이페이지에서 알림을 다시 켜면 알림센터를 확인할 수 있습니다."
+        icon="bell"
+        tone="info"
+      />
+
 
       <AppStatePanel
         v-else-if="errorMessage && !visibleNotifications.length"
@@ -107,13 +147,15 @@ onMounted(async () => {
         <template #actions>
           <button class="primary-button" @click="handleRefresh">다시 시도</button>
         </template>
+
+        
       </AppStatePanel>
 
       <section v-else class="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside class="grid gap-4 xl:sticky xl:top-6 xl:self-start">
           <article class="shell-card p-5">
             <p class="text-sm font-semibold text-[#8A6A00]">읽지 않은 알림</p>
-            <p class="mt-2 text-[32px] font-black tracking-[-0.04em] text-neutral-900">{{ unreadCount }}개</p>
+            <p class="mt-2 text-[32px] font-black tracking-[-0.04em] text-neutral-900">{{ displayUnreadCount  }}개</p>
             <p class="mt-2 text-sm leading-6 text-neutral-500">읽지 않은 결제 알림을 우선 노출합니다. 읽음 처리 후 헤더 배지도 즉시 갱신됩니다.</p>
           </article>
           <article class="shell-card p-5">
@@ -127,14 +169,14 @@ onMounted(async () => {
           <div class="flex items-end justify-between gap-3 border-b border-[rgba(46,34,10,0.08)] pb-5">
             <div>
               <p class="text-sm font-semibold text-[#8A6A00]">알림 목록</p>
-              <h2 class="mt-2 section-heading">{{ visibleNotifications.length }}개 항목</h2>
+              <h2 class="mt-2 section-heading">{{ filteredNotifications.length }}개 항목</h2>
             </div>
             <p class="text-sm text-neutral-500">읽음 처리와 닫기 처리는 모두 서버에 즉시 반영됩니다.</p>
           </div>
 
-          <div v-if="visibleNotifications.length" class="mt-5 grid gap-4">
-            <article
-              v-for="item in visibleNotifications"
+          <div v-if="filteredNotifications.length" class="mt-5 grid gap-4">
+          <article
+            v-for="item in filteredNotifications"
               :id="`notification-card-${item.notificationId}`"
               :key="item.notificationId"
               class="rounded-[24px] border px-5 py-5 transition"
