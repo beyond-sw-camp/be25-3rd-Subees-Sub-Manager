@@ -4,7 +4,6 @@ import {
   getPaymentCalendar,
   getPaymentDateDetails,
   getPaymentAnalytics,
-  getCategorySummary,
   getMonthlyPaymentList,
 } from '@/api/calendar'
 
@@ -163,8 +162,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     items: [],
   })
 
-  const topCategorySummary = ref([])
-
   const categoryAnalytics = ref({
     year: todayYear,
     month: todayMonth,
@@ -306,10 +303,7 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
   const dominantCategory = computed(() => {
     if (!currentMonthCategorySummary.value.length) return null
-
-    return [...currentMonthCategorySummary.value].sort(
-      (a, b) => b.totalAmount - a.totalAmount,
-    )[0]
+    return currentMonthCategorySummary.value[0]
   })
 
   const yearlyCategorySummary = computed(() => {
@@ -375,9 +369,9 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
 
   const activeTrendItems = computed(() => {
     if (trendView.value === 'YEARLY') {
-      return (yearlyAnalytics.value?.categories || []).map((item) => ({
+      return yearlyCategorySummary.value.map((item) => ({
         key: item.categoryName,
-        label: item.categoryName,
+        label: item.displayName,
         totalAmount: Number(item.totalAmount || 0),
         subscriptionCount: Number(item.subscriptionCount || 0),
       }))
@@ -463,23 +457,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     }
   }
 
-  const fetchTopCategorySummary = async () => {
-    const response = await getCategorySummary({
-      year: currentYear.value,
-      month: currentMonth.value,
-    })
-
-    const normalized = normalizeArrayPayload(response)
-
-    topCategorySummary.value = (normalized || [])
-      .map((item) => ({
-        categoryName: item.categoryName || '',
-        itemNames: item.itemNames || '',
-        totalAmount: Number(item.totalAmount || 0),
-      }))
-      .sort((a, b) => b.totalAmount - a.totalAmount)
-  }
-
   const fetchAnalytics = async () => {
     const response = await getPaymentAnalytics({
       year: currentYear.value,
@@ -556,70 +533,73 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     selectedDateDetailList.value = normalized || []
   }
 
-  const fetchAll = async () => {
+  const safeRun = async (fn, fallback) => {
     try {
-      isLoading.value = true
-      errorMessage.value = ''
-
-      await Promise.all([
-        fetchCalendar(),
-        fetchPreviousCalendar(),
-        fetchAnalytics(),
-        fetchYearlyAnalytics(),
-        fetchCurrentMonthPaymentList(),
-        fetchPreviousMonthPaymentList(),
-      ])
-
-      await fetchSelectedDateDetails()
+      await fn()
     } catch (error) {
-      console.error('paymentCalendar fetchAll 실패:', error)
-      errorMessage.value = '캘린더 데이터를 불러오지 못했습니다.'
-
-      calendarSummary.value = {
-        year: currentYear.value,
-        month: currentMonth.value,
-        monthTotalAmount: 0,
-        items: [],
-      }
-
-      previousCalendarSummary.value = {
-        year: currentYear.value,
-        month: currentMonth.value,
-        monthTotalAmount: 0,
-        items: [],
-      }
-
-      categoryAnalytics.value = {
-        year: currentYear.value,
-        month: currentMonth.value,
-        rangeType: 'MONTH',
-        totalAmount: 0,
-        categories: [],
-      }
-
-      yearlyAnalytics.value = {
-        year: currentYear.value,
-        month: currentMonth.value,
-        rangeType: 'YEAR',
-        totalAmount: 0,
-        categories: [],
-      }
-
-      selectedDateDetailList.value = []
-      topCategorySummary.value = []
-      currentMonthPaymentSource.value = []
-      previousMonthPaymentSource.value = []
-    } finally {
-      isLoading.value = false
+      console.error('paymentCalendar 개별 조회 실패:', error)
+      fallback?.()
     }
+  }
+
+  const fetchAll = async () => {
+    isLoading.value = true
+    errorMessage.value = ''
+
+    await Promise.allSettled([
+      safeRun(fetchCalendar, () => {
+        calendarSummary.value = {
+          year: currentYear.value,
+          month: currentMonth.value,
+          monthTotalAmount: 0,
+          items: [],
+        }
+      }),
+      safeRun(fetchPreviousCalendar, () => {
+        previousCalendarSummary.value = {
+          year: currentYear.value,
+          month: currentMonth.value,
+          monthTotalAmount: 0,
+          items: [],
+        }
+      }),
+      safeRun(fetchAnalytics, () => {
+        categoryAnalytics.value = {
+          year: currentYear.value,
+          month: currentMonth.value,
+          rangeType: 'MONTH',
+          totalAmount: 0,
+          categories: [],
+        }
+      }),
+      safeRun(fetchYearlyAnalytics, () => {
+        yearlyAnalytics.value = {
+          year: currentYear.value,
+          month: currentMonth.value,
+          rangeType: 'YEAR',
+          totalAmount: 0,
+          categories: [],
+        }
+      }),
+      safeRun(fetchCurrentMonthPaymentList, () => {
+        currentMonthPaymentSource.value = []
+      }),
+      safeRun(fetchPreviousMonthPaymentList, () => {
+        previousMonthPaymentSource.value = []
+      }),
+    ])
+
+    await safeRun(fetchSelectedDateDetails, () => {
+      selectedDateDetailList.value = []
+    })
+
+    isLoading.value = false
   }
 
   const setSelectedDate = async (dateKey) => {
     const [year, month] = dateKey.split('-').map(Number)
 
-    if (year !== currentYear.value || month !== currentMonth.value) {
-      return
-    }
+    if (year !== currentYear.value || month !== currentMonth.value) return
 
     selectedDateKey.value = dateKey
 
@@ -635,9 +615,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
   }
 
   const moveMonth = async (offset) => {
-    const [, , selectedDayText] = selectedDateKey.value.split('-')
-    const preferredDay = Number(selectedDayText || todayDay)
-
     const next = new Date(
       currentYear.value,
       currentMonth.value - 1 + offset,
@@ -649,10 +626,8 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     selectedDateKey.value = buildSelectedDateKey(
       currentYear.value,
       currentMonth.value,
-      preferredDay,
+      1,
     )
-
-    topCategorySummary.value = []
 
     await fetchAll()
   }
@@ -669,7 +644,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     currentMonthShortLabel,
     monthTotalAmount,
     topCategoryTotalAmount,
-    topCategorySummary,
     dominantCategory,
     currentMonthCategorySummary,
     yearlyCategorySummary,
@@ -686,7 +660,6 @@ export const usePaymentCalendarStore = defineStore('paymentCalendar', () => {
     setTrendView,
     setSelectedDate,
     fetchCalendar,
-    fetchTopCategorySummary,
     fetchAnalytics,
     fetchSelectedDateDetails,
     fetchAll,

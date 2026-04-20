@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import PaymentCalendarGrid from '@/components/calendar/PaymentCalendarGrid.vue'
@@ -18,7 +18,6 @@ const {
   currentMonthShortLabel,
   monthTotalAmount,
   topCategoryTotalAmount,
-  topCategorySummary,
   dominantCategory,
   currentMonthCategorySummary,
   calendarDays,
@@ -47,104 +46,15 @@ const categoryDisplayName = (categoryName) =>
     Others: '기타',
   }[categoryName] || categoryName)
 
-const extractDayNumber = (day) => {
-  if (day?.payDay != null) return Number(day.payDay)
-  if (day?.day != null) return Number(day.day)
-  if (day?.dateNumber != null) return Number(day.dateNumber)
-  if (day?.date) {
-    const parsed = new Date(day.date)
-    if (!Number.isNaN(parsed.getTime())) return parsed.getDate()
+const analysisGuideMessage =
+  '연간 구독권은 월별 소비 비교를 위해 12개월로 나누어 반영됩니다.'
 
-    const match = String(day.date).match(/(\d{1,2})$/)
-    if (match) return Number(match[1])
-  }
-  return null
-}
-
-const isCurrentMonthDay = (day) => {
-  if (day?.isCurrentMonth !== undefined) return day.isCurrentMonth
-  if (day?.isCurrent !== undefined) return day.isCurrent
-  if (day?.outside !== undefined) return !day.outside
-  if (day?.isOutside !== undefined) return !day.isOutside
-  return true
-}
-
-const monthlyTrendItems = computed(() => {
-  const source = Array.isArray(calendarDays.value) ? calendarDays.value : []
-
-  return source
-    .filter((day) => isCurrentMonthDay(day) && Number(day.totalAmount || 0) > 0)
-    .map((day, index) => {
-      const dayNumber = extractDayNumber(day)
-      if (!dayNumber) return null
-
-      return {
-        key: `day-${dayNumber}-${index}`,
-        label: `${dayNumber}일`,
-        totalAmount: Number(day.totalAmount || 0),
-        totalCount: Number(day.totalCount || 0),
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => Number(a.label.replace('일', '')) - Number(b.label.replace('일', '')))
-})
-
-const yearlyTrendItems = computed(() => {
-  const source = Array.isArray(activeTrendItems.value) ? activeTrendItems.value : []
-
-  return source
-    .map((item, index) => {
-      const month = Number(item.month ?? item.label?.replace?.('월', '') ?? 0)
-      if (!month) return null
-
-      return {
-        key: `month-${month}-${index}`,
-        label: `${month}월`,
-        totalAmount: Number(item.totalAmount || 0),
-        subscriptionCount:
-          item.subscriptionCount !== undefined && item.subscriptionCount !== null
-            ? Number(item.subscriptionCount)
-            : null,
-        totalCount: Number(item.totalCount || item.count || 0),
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => Number(a.label.replace('월', '')) - Number(b.label.replace('월', '')))
-})
-
-const trendPanelItems = computed(() =>
-  trendView.value === 'MONTHLY' ? monthlyTrendItems.value : yearlyTrendItems.value,
-)
-
-const resolvedTrendMaxAmount = computed(() => {
-  const source = trendPanelItems.value
-  if (!source.length) return 0
-
-  return source.reduce((max, item) => Math.max(max, Number(item.totalAmount || 0)), 0)
-})
-
-  const resolvedTrendTotalAmount = computed(() => {
-  return Number(trendTotalAmount.value || 0)
-})
-
-const resolvedPreviousTrendTotalAmount = computed(() => {
-  return Number(previousTrendTotalAmount.value || 0)
-})
-
-const changePanelTab = async (tab) => {
+const changePanelTab = (tab) => {
   activePanelTab.value = tab
-
-  if (tab === 'CATEGORY') {
-    await paymentCalendarStore.fetchTopCategorySummary()
-  }
 }
 
 const handleMoveMonth = async (offset) => {
   await paymentCalendarStore.moveMonth(offset)
-
-  if (activePanelTab.value === 'CATEGORY') {
-    await paymentCalendarStore.fetchTopCategorySummary()
-  }
 }
 
 onMounted(async () => {
@@ -216,15 +126,15 @@ onMounted(async () => {
               class="rounded-full px-4 py-2 text-sm font-bold"
               :class="
                 activePanelTab === 'MONTH'
-                  ? 'bg-[#F2A6A6] text-white'
-                  : 'bg-[rgba(46,34,10,0.06)] text-neutral-500'
+                  ? 'bg-[#E7C85A] text-[#3B2F12]'
+      : 'bg-[rgba(46,34,10,0.06)] text-neutral-500'
               "
               @click="changePanelTab('MONTH')"
             >
               월별
             </button>
 
-            <button
+            <!-- <button
               type="button"
               class="rounded-full px-4 py-2 text-sm font-bold"
               :class="
@@ -235,7 +145,7 @@ onMounted(async () => {
               @click="changePanelTab('CATEGORY')"
             >
               카테고리
-            </button>
+            </button> -->
           </div>
 
           <template v-if="activePanelTab === 'MONTH'">
@@ -267,6 +177,9 @@ onMounted(async () => {
                         ? `${formatCurrency(dominantCategory.totalAmount)} · ${dominantCategory.subscriptionCount}개 서비스`
                         : '표시할 데이터가 없습니다.'
                     }}
+                  </p>
+                  <p class="mt-2 text-[11px] leading-5 text-neutral-400">
+
                   </p>
                 </div>
 
@@ -301,26 +214,36 @@ onMounted(async () => {
             <p class="mt-2 text-[30px] font-black tracking-[-0.04em] text-neutral-900">
               {{ formatCurrency(topCategoryTotalAmount) }}
             </p>
+            <p class="mt-2 text-xs leading-5 text-neutral-400">
+            </p>
 
-            <div v-if="topCategorySummary.length" class="mt-4 grid gap-3">
+            <div v-if="currentMonthCategorySummary.length" class="mt-4 grid gap-3">
               <article
-                v-for="(item, index) in topCategorySummary"
-                :key="`${item.categoryName}-${index}`"
+                v-for="item in currentMonthCategorySummary"
+                :key="item.categoryName"
                 class="rounded-[20px] border border-[rgba(46,34,10,0.08)] bg-brand-50 px-4 py-3"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <p class="text-sm font-bold text-neutral-900">
-                      {{ categoryDisplayName(item.categoryName) }}
+                      {{ item.displayName }}
                     </p>
                     <p class="mt-1 break-words text-xs leading-5 text-neutral-500">
-                      {{ item.itemNames || '-' }}
+                      {{ item.subscriptionCount }}개 서비스
                     </p>
                   </div>
 
                   <p class="shrink-0 text-sm font-bold text-neutral-900">
                     {{ formatCurrency(item.totalAmount) }}
                   </p>
+                </div>
+
+                <div class="mt-3 h-2 rounded-full bg-[rgba(46,34,10,0.08)]">
+                  <div
+                    class="h-2 rounded-full"
+                    :class="item.colorClass"
+                    :style="{ width: `${item.ratio}%` }"
+                  ></div>
                 </div>
               </article>
             </div>
@@ -330,7 +253,7 @@ onMounted(async () => {
               class="mt-5"
               compact
               title="카테고리 데이터를 보여줄 수 없습니다"
-              description="해당 월의 카테고리 전체 조회 데이터가 없습니다."
+              description="해당 월의 카테고리 분석 데이터가 없습니다."
               icon="grid"
             />
           </section>
@@ -344,6 +267,8 @@ onMounted(async () => {
             <h2 class="mt-2 text-[22px] font-bold tracking-[-0.03em] text-neutral-900">
               {{ currentMonthLabel }}
             </h2>
+            <p class="mt-2 text-xs leading-5 text-neutral-400">
+            </p>
           </div>
 
           <div v-if="currentMonthCategorySummary.length" class="mt-4 grid gap-3">
@@ -397,14 +322,18 @@ onMounted(async () => {
         </section>
 
         <div class="grid gap-2">
+          <p class="px-1 text-xs leading-5 text-neutral-400">
+        
+          </p>
+
           <SpendTrendPanel
-            :items="trendPanelItems"
-            :max-amount="resolvedTrendMaxAmount"
+            :items="activeTrendItems"
+            :max-amount="maxTrendAmount"
             :view="trendView"
             :payment-preview="currentMonthPaymentList"
             :payment-preview-label="currentMonthShortLabel"
-            :total-amount="resolvedTrendTotalAmount"
-            :previous-total-amount="resolvedPreviousTrendTotalAmount"
+            :total-amount="trendTotalAmount"
+            :previous-total-amount="previousTrendTotalAmount"
             @change-view="paymentCalendarStore.setTrendView"
           />
         </div>
