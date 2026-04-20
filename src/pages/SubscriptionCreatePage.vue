@@ -1,24 +1,28 @@
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppShell from '@/components/layout/AppShell.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionFormStore } from '@/stores/subscriptionForm'
 import { usePaymentCardsStore } from '@/stores/paymentCards'
-import { categoryImage, serviceImage } from '@/utils/imageAssets'
 import { createSubscription } from '@/api/subscription'
 import AppAsset from '@/components/ui/AppAsset.vue'
-import { getSubscriptionCategory } from '@/api/subscription'
-import { getSubscriptionItemByCategory } from '@/api/subscription'
-import { getPaymentCard } from '@/api/subscription'
-
+import {
+  getSubscriptionCategory,
+  getSubscriptionItemByCategory,
+  getPaymentCard,
+} from '@/api/subscription'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const subscriptionFormStore = useSubscriptionFormStore()
 const paymentCardsStore = usePaymentCardsStore()
+const notificationsStore = useNotificationsStore()
+
 const { currentStep, subscriptionForm, resolvedSubscriptionName } = storeToRefs(subscriptionFormStore)
+
 const showCardPicker = ref(false)
 const showCardDropdown = ref(false)
 const steps = [1, 2, 3, 4]
@@ -46,11 +50,9 @@ const requestPayload = computed(() => ({
 }))
 
 onMounted(async () => {
-  // 카테고리 조회
   const categoryRes = await getSubscriptionCategory()
   categories.value = categoryRes.data.data
 
-  // 카드 조회
   const cardRes = await getPaymentCard()
   console.log('카드 응답 전체:', cardRes)
   console.log('카드 응답 data:', cardRes.data)
@@ -108,11 +110,9 @@ const selectService = (service) => {
   subscriptionFormStore.setSubscription(
     service.itemId,
     service.itemName,
-    service.price
+    service.price,
   )
 }
-
-
 
 const progressPercent = computed(() => `${(currentStep.value / 4) * 100}%`)
 
@@ -132,7 +132,7 @@ const stepGuide = computed(() => {
 
 const selectedCategory = computed(() => {
   return categories.value.find(
-    (item) => item.categoryId === subscriptionForm.value.categoryId
+    (item) => item.categoryId === subscriptionForm.value.categoryId,
   ) || {}
 })
 
@@ -140,7 +140,7 @@ const selectedCategoryLabel = computed(() => selectedCategory.value.categoryName
 
 const selectedServiceLabel = computed(() => {
   const found = services.value.find(
-    (item) => item.itemId === subscriptionForm.value.itemId
+    (item) => item.itemId === subscriptionForm.value.itemId,
   )
   return found?.itemName || ''
 })
@@ -151,8 +151,8 @@ const serviceOptions = computed(() => services.value)
 const isStepValid = computed(() => {
   if (currentStep.value === 1) return Boolean(subscriptionForm.value.categoryId)
   if (currentStep.value === 2) {
-  return Boolean(subscriptionForm.value.itemId)
-}
+    return Boolean(subscriptionForm.value.itemId)
+  }
   if (currentStep.value === 3) {
     return Boolean(
       subscriptionForm.value.paymentAmount &&
@@ -175,7 +175,6 @@ const selectCategory = async (category) => {
   services.value = res.data.data
 }
 
-
 const pickCard = (card) => {
   paymentCardErrorMessage.value = ''
   subscriptionFormStore.setPaymentCardId(card.paymentId)
@@ -183,6 +182,7 @@ const pickCard = (card) => {
   showCardDropdown.value = false
   showCardPicker.value = false
 }
+
 const handleIconFileChange = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
@@ -200,6 +200,7 @@ const clearIconFile = () => {
   subscriptionFormStore.setIconFileName('')
   previewImage.value = null
 }
+
 const goNext = () => {
   if (currentStep.value === 1) {
     if (!subscriptionForm.value.categoryId) {
@@ -264,6 +265,12 @@ const submitDraft = async () => {
 
     const response = await createSubscription(requestPayload.value)
 
+    try {
+      await notificationsStore.fetchNotifications({ force: true })
+    } catch (notificationError) {
+      console.error('알림 갱신 실패:', notificationError)
+    }
+
     console.log('등록 성공:', response.data)
     shouldResetOnLeave.value = true
     showSuccessModal.value = true
@@ -273,11 +280,13 @@ const submitDraft = async () => {
     window.alert(error.response?.data?.message || '구독 등록에 실패했습니다.')
   }
 }
+
 const closeSuccessModal = () => {
   showSuccessModal.value = false
   router.push('/subscriptions')
 }
 </script>
+
 
 <template>
   <AppShell title="hidden">
